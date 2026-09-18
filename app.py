@@ -16,6 +16,7 @@ import joblib
 import warnings
 import os
 import time
+from dotenv import load_dotenv
 
 # sklearn imports — used when building a fresh model as fallback
 from sklearn.ensemble import RandomForestClassifier
@@ -27,6 +28,10 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 
 warnings.filterwarnings("ignore")
+
+# Load environment variables from .env in the project root
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
+MAPTILER_API_KEY: str = os.getenv("MAPTILER_API_KEY", "")
 
 # ── CONSTANTS ─────────────────────────────────────────────────────────────────
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -130,107 +135,236 @@ _DROP_COLS = [
 ]
 
 
-@st.cache_resource(show_spinner=False)
-def load_model_bundle() -> dict:
+def _build_widget_metadata(df_source: pd.DataFrame, num_cols: list, cat_cols: list) -> tuple:
     """
-    Try to load the pre-trained model bundle from disk.
-    If that fails (e.g., sklearn version mismatch), train a fresh
-    Random Forest from the CSV and return an equivalent bundle.
+    Build feat_ranges and feat_options dicts for the Predict page widgets
+    from the source DataFrame.  Works whether the bundle was loaded from
+    disk or freshly trained.
     """
-    try:
-        return joblib.load(MODEL_PATH)
-    except Exception:
-        # ── Fallback: train fresh from the dataset ──────────────────────────
-        df_raw = pd.read_csv(DATA_PATH)
-        df     = df_raw.copy()
-        df.drop(columns=[c for c in _DROP_COLS if c in df.columns], inplace=True, errors="ignore")
-
-        X = df.drop(columns=[TARGET_COL], errors="ignore")
-        y = df[TARGET_COL]
-
-        le     = LabelEncoder()
-        y_enc  = le.fit_transform(y)
-
-        num_cols = X.select_dtypes(include="number").columns.tolist()
-        cat_cols = [c for c in _CAT_COLS if c in X.columns]
-        used_cols = num_cols + cat_cols
-        X = X[used_cols]
-
-        num_pipe = Pipeline([("imputer", SimpleImputer(strategy="median"))])
-        cat_pipe = Pipeline([
-            ("imputer", SimpleImputer(strategy="most_frequent")),
-            ("encoder", OrdinalEncoder(handle_unknown="use_encoded_value", unknown_value=-1)),
-        ])
-        preprocessor = ColumnTransformer([
-            ("num", num_pipe, num_cols),
-            ("cat", cat_pipe, cat_cols),
-        ])
-        pipeline = Pipeline([
-            ("pre", preprocessor),
-            ("clf", RandomForestClassifier(
-                n_estimators=150, max_depth=15, random_state=42,
-                n_jobs=-1, class_weight="balanced",
-            )),
-        ])
-
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y_enc, test_size=0.2, random_state=42, stratify=y_enc
-        )
-        pipeline.fit(X_train, y_train)
-        y_pred = pipeline.predict(X_test)
-        acc    = round(accuracy_score(y_test, y_pred) * 100, 2)
-
-        # Feature importance
-        importances = pipeline.named_steps["clf"].feature_importances_
-        feat_imp = pd.DataFrame({"Feature": used_cols, "Importance": importances})
-        feat_imp = feat_imp.sort_values("Importance", ascending=False).reset_index(drop=True)
-        feat_imp["Rank"] = feat_imp.index + 1
-
-        # Metadata for prediction widgets
-        feat_ranges  = {}
-        feat_options = {}
-        for col in num_cols:
-            col_data = X[col].dropna()
+    feat_ranges: dict  = {}
+    feat_options: dict = {}
+    for col in num_cols:
+        if col in df_source.columns:
+            col_data = df_source[col].dropna()
             feat_ranges[col] = {
                 "min":    float(col_data.min()),
                 "max":    float(col_data.max()),
                 "median": float(col_data.median()),
             }
-        for col in cat_cols:
-            feat_options[col] = sorted(df[col].dropna().unique().tolist())
+    for col in cat_cols:
+        if col in df_source.columns:
+            feat_options[col] = sorted(df_source[col].dropna().unique().tolist())
+    return feat_ranges, feat_options
 
-        return {
-            "pipeline":      pipeline,
-            "label_encoder": le,
-            "feature_names": used_cols,
-            "num_cols":      num_cols,
-            "cat_cols":      cat_cols,
-            "feat_imp":      feat_imp,
-            "feat_ranges":   feat_ranges,
-            "feat_options":  feat_options,
-            "metrics":       {"accuracy": acc},
-            "_fallback":     True,   # Flag so UI can note it was freshly trained
-        }
+
+def _normalise_bundle(raw: dict, df_source: pd.DataFrame | None = None) -> dict:
+    """
+    Convert the on-disk bundle (keys: pipeline, label_encoder, feature_columns,
+    target, model_name, classes) into the normalised schema that the rest of
+    the app expects:
+
+        pipeline, label_encoder, feature_names, num_cols, cat_cols,
+        feat_imp, feat_ranges, feat_options, metrics, _fallback
+
+    If the bundle already has 'feature_names' it is already normalised
+    (i.e. produced by the fallback trainer) and is returned unchanged.
+    """
+    # Already normalised (produced by fallback training path)
+    if "feature_names" in raw:
+        return raw
+
+    pipeline      = raw["pipeline"]
+    label_encoder = raw["label_encoder"]
+    feature_cols  = list(raw.get("feature_columns", []))
+    classes       = list(raw.get("classes", []))
+    model_name    = raw.get("model_name", "Unknown")
+
+    # ── Extract num / cat split from the ColumnTransformer ──────────────────
+    num_cols: list = []
+    cat_cols: list = []
+    try:
+        ct_step = None
+        for _, step in pipeline.steps[:-1]:   # last step is the classifier
+            if hasattr(step, "transformers_"):
+                ct_step = step
+                break
+        if ct_step is not None:
+            for t_name, _, t_cols in ct_step.transformers_:
+                if t_name == "num":
+                    num_cols = list(t_cols)
+                elif t_name == "cat":
+                    cat_cols = list(t_cols)
+    except Exception:
+        # Fallback: derive from dtype if ColumnTransformer introspection fails
+        if df_source is not None:
+            num_cols = df_source[feature_cols].select_dtypes(include="number").columns.tolist()
+            cat_cols = [c for c in feature_cols if c not in num_cols]
+
+    # ── Rebuild widget metadata from data source ─────────────────────────────
+    feat_ranges: dict  = {}
+    feat_options: dict = {}
+    if df_source is not None:
+        feat_ranges, feat_options = _build_widget_metadata(df_source, num_cols, cat_cols)
+
+    # ── Feature importances ──────────────────────────────────────────────────
+    feat_imp = pd.DataFrame()
+    try:
+        clf = pipeline.steps[-1][1]   # last pipeline step
+        if hasattr(clf, "feature_importances_"):
+            importances = clf.feature_importances_
+            # ColumnTransformer output order: num first, then cat
+            all_transformed_cols = num_cols + cat_cols
+            if len(importances) == len(all_transformed_cols):
+                feat_imp = pd.DataFrame({
+                    "Feature":    all_transformed_cols,
+                    "Importance": importances,
+                }).sort_values("Importance", ascending=False).reset_index(drop=True)
+                feat_imp["Rank"] = feat_imp.index + 1
+    except Exception:
+        pass
+
+    # ── Patch label_encoder.classes_ if missing ──────────────────────────────
+    # The on-disk bundle stores classes separately; LabelEncoder may not have
+    # .classes_ set if it was not fitted in the usual sklearn way.
+    if not hasattr(label_encoder, "classes_") or label_encoder.classes_ is None:
+        import numpy as _np
+        label_encoder.classes_ = _np.array(classes)
+
+    # ── Estimate accuracy from bundle metadata if available ──────────────────
+    acc = raw.get("accuracy", raw.get("metrics", {}).get("accuracy", "—"))
+
+    return {
+        "pipeline":      pipeline,
+        "label_encoder": label_encoder,
+        "feature_names": feature_cols,
+        "num_cols":      num_cols,
+        "cat_cols":      cat_cols,
+        "feat_imp":      feat_imp,
+        "feat_ranges":   feat_ranges,
+        "feat_options":  feat_options,
+        "metrics":       {"accuracy": acc},
+        "model_name":    model_name,
+        "_fallback":     False,
+    }
+
+
+@st.cache_resource(show_spinner=False)
+def load_model_bundle() -> dict:
+    """
+    Try to load the pre-trained model bundle from disk.
+    If that fails (e.g., sklearn version mismatch), train a fresh
+    Random Forest from the CSV and return an equivalent normalised bundle.
+    """
+    try:
+        raw = joblib.load(MODEL_PATH)
+        # Load data for widget metadata reconstruction
+        try:
+            df_src = pd.read_csv(DATA_PATH)
+        except Exception:
+            df_src = None
+        return _normalise_bundle(raw, df_source=df_src)
+    except Exception:
+        pass
+
+    # ── Fallback: train fresh from the dataset ──────────────────────────────
+    df_raw = pd.read_csv(DATA_PATH)
+    df     = df_raw.copy()
+    df.drop(columns=[c for c in _DROP_COLS if c in df.columns], inplace=True, errors="ignore")
+
+    X = df.drop(columns=[TARGET_COL], errors="ignore")
+    y = df[TARGET_COL]
+
+    le    = LabelEncoder()
+    y_enc = le.fit_transform(y)
+
+    num_cols  = X.select_dtypes(include="number").columns.tolist()
+    cat_cols  = [c for c in _CAT_COLS if c in X.columns]
+    used_cols = num_cols + cat_cols
+    X = X[used_cols]
+
+    num_pipe = Pipeline([("imputer", SimpleImputer(strategy="median"))])
+    cat_pipe = Pipeline([
+        ("imputer", SimpleImputer(strategy="most_frequent")),
+        ("encoder", OrdinalEncoder(handle_unknown="use_encoded_value", unknown_value=-1)),
+    ])
+    preprocessor = ColumnTransformer([
+        ("num", num_pipe, num_cols),
+        ("cat", cat_pipe, cat_cols),
+    ])
+    pipeline = Pipeline([
+        ("preprocessor", preprocessor),
+        ("model", RandomForestClassifier(
+            n_estimators=150, max_depth=15, random_state=42,
+            n_jobs=-1, class_weight="balanced",
+        )),
+    ])
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y_enc, test_size=0.2, random_state=42, stratify=y_enc
+    )
+    pipeline.fit(X_train, y_train)
+    y_pred = pipeline.predict(X_test)
+    acc    = round(accuracy_score(y_test, y_pred) * 100, 2)
+
+    # Feature importance
+    importances = pipeline.named_steps["model"].feature_importances_
+    feat_imp = pd.DataFrame({"Feature": used_cols, "Importance": importances})
+    feat_imp = feat_imp.sort_values("Importance", ascending=False).reset_index(drop=True)
+    feat_imp["Rank"] = feat_imp.index + 1
+
+    feat_ranges, feat_options = _build_widget_metadata(df, num_cols, cat_cols)
+
+    return {
+        "pipeline":      pipeline,
+        "label_encoder": le,
+        "feature_names": used_cols,
+        "num_cols":      num_cols,
+        "cat_cols":      cat_cols,
+        "feat_imp":      feat_imp,
+        "feat_ranges":   feat_ranges,
+        "feat_options":  feat_options,
+        "metrics":       {"accuracy": acc},
+        "model_name":    "Random Forest (fallback)",
+        "_fallback":     True,
+    }
 
 
 # ── PREDICTION HELPER ─────────────────────────────────────────────────────────
 def predict_severity(bundle: dict, input_dict: dict):
     """
-    Run inference with the loaded pipeline bundle.
+    Run inference with the normalised pipeline bundle.
     Returns (predicted_label, probas_array, class_names).
+
+    The bundle must be normalised via _normalise_bundle() before calling this
+    function — both the disk-loaded and fallback bundles satisfy this contract.
     """
     pipeline      = bundle["pipeline"]
     le            = bundle["label_encoder"]
-    feature_names = bundle["feature_names"]
+    feature_names = bundle.get("feature_names") or bundle.get("feature_columns", [])
 
-    # Build a one-row DataFrame aligned to the pipeline's expected columns
+    if not feature_names:
+        raise ValueError(
+            "Model bundle does not contain 'feature_names' or 'feature_columns'. "
+            "Please reload the bundle."
+        )
+
+    # Build a one-row DataFrame with all expected columns (NaN for any missing)
     row      = {col: input_dict.get(col, np.nan) for col in feature_names}
     input_df = pd.DataFrame([row])
 
-    probas     = pipeline.predict_proba(input_df)[0]
-    pred_idx   = int(np.argmax(probas))
-    pred_label = le.classes_[pred_idx]
-    return pred_label, probas, le.classes_
+    probas   = pipeline.predict_proba(input_df)[0]
+    pred_idx = int(np.argmax(probas))
+
+    # Resolve class label from LabelEncoder or fallback classes list
+    try:
+        pred_label = le.classes_[pred_idx]
+        class_names = le.classes_
+    except (AttributeError, IndexError):
+        classes     = bundle.get("classes", SEVERITY_ORDER)
+        pred_label  = classes[pred_idx] if pred_idx < len(classes) else "unknown"
+        class_names = classes
+
+    return pred_label, probas, class_names
 
 
 # ── SEVERITY BADGE HTML ───────────────────────────────────────────────────────
@@ -279,9 +413,10 @@ with st.sidebar:
     st.markdown(f"**Dataset:** {'✅ Loaded' if df_ok else '❌ Not found'}")
 
     if model_ok:
-        is_fallback = st.session_state.model_bundle.get("_fallback", False)
-        model_label = "✅ Ready (fresh)" if is_fallback else "✅ Ready"
-        acc = st.session_state.model_bundle.get("metrics", {}).get("accuracy", "—")
+        is_fallback  = st.session_state.model_bundle.get("_fallback", False)
+        model_name   = st.session_state.model_bundle.get("model_name", "Random Forest" if is_fallback else "XGBoost")
+        model_label  = f"✅ {model_name}" + (" (fresh)" if is_fallback else "")
+        acc          = st.session_state.model_bundle.get("metrics", {}).get("accuracy", "—")
         st.markdown(f"**Model:**   {model_label}")
         st.markdown(f"**Accuracy:** `{acc}%`")
     else:
@@ -306,7 +441,7 @@ if page == "🏠  Home":
     st.title("🚦 Indian Road Accident Severity Dashboard")
     st.markdown(
         "##### Predict, analyse, and visualise road accident severity across India — "
-        "powered by a **Random Forest** classifier trained on real crash data."
+        "powered by a **XGBoost** classifier trained on real crash data."
     )
     st.markdown("---")
 
@@ -1055,10 +1190,23 @@ elif page == "🗺️  India Accident Map":
         st.warning("No data points match the current filters.")
     else:
         # Centre on India's geographic midpoint
+        # Use MapTiler tiles when a key is provided, else fall back to CartoDB
+        if MAPTILER_API_KEY:
+            tile_url = (
+                f"https://api.maptiler.com/maps/streets/{{z}}/{{x}}/{{y}}.png"
+                f"?key={MAPTILER_API_KEY}"
+            )
+            tiles_kwargs = dict(
+                tiles=tile_url,
+                attr="MapTiler",
+            )
+        else:
+            tiles_kwargs = dict(tiles="CartoDB positron")
+
         m = folium.Map(
             location=[20.5937, 78.9629],
             zoom_start=5,
-            tiles="CartoDB positron",
+            **tiles_kwargs,
         )
 
         # Add a cluster layer for better performance
