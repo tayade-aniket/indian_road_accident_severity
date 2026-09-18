@@ -1,0 +1,45 @@
+# Web framework -- builds and runs the entire UI in the browser
+streamlit==1.28.0
+
+# Data manipulation -- loads, cleans, and reshapes tabular data
+pandas==2.0.3
+
+# Numerical computing -- array operations, random sampling, math
+numpy==1.24.3
+
+# Static plotting -- used for matplotlib-based charts and figures
+matplotlib==3.7.2
+
+# Interactive charts -- powers all the Plotly visualizations in the app
+plotly==5.17.0
+
+# Excel file support -- lets pandas read .xlsx files
+openpyxl==3.1.2
+
+# Excel file support (legacy) -- handles older .xls format files
+xlrd==2.0.1
+
+# HTTP requests -- useful if you pull data from an API or URL
+requests==2.31.0
+
+# Statistical analysis -- correlation, distribution tests, regression
+scipy==1.11.3
+
+# Machine learning -- full Pipeline with RandomForest, OrdinalEncoder, SimpleImputer, ColumnTransformer
+scikit-learn>=1.3.0
+
+# Color palettes -- makes charts look better with built-in color sets
+seaborn==0.12.2
+
+# Python typing hints support -- makes the code easier to read and maintain
+typing-extensions==4.8.0
+
+# Progress bars -- shows loading spinners for long operations
+tqdm==4.66.1
+
+# Environment variable management -- loads config from a .env file safely
+python-dotenv==1.0.0
+
+# Interactive map rendering -- renders Folium maps in Streamlit pages
+folium>=0.14.0
+streamlit-folium>=0.15.0

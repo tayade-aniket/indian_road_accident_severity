@@ -1,0 +1,115 @@
+# ─────────────────────────────────────────────
+#  Python
+# ─────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+dist/
+build/
+*.whl
+.eggs/
+
+# ─────────────────────────────────────────────
+#  Virtual environments
+# ─────────────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+.env
+*.env
+
+# ─────────────────────────────────────────────
+#  Jupyter Notebook
+# ─────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# ─────────────────────────────────────────────
+#  Streamlit
+# ─────────────────────────────────────────────
+.streamlit/secrets.toml
+
+# ─────────────────────────────────────────────
+#  Machine-learning artifacts (large binaries)
+# ─────────────────────────────────────────────
+models/*.joblib
+models/*.pkl
+models/*.h5
+models/*.pt
+models/*.pth
+models/*.onnx
+
+# ─────────────────────────────────────────────
+#  Data files (keep folder structure, ignore content)
+# ─────────────────────────────────────────────
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+
+# Common data formats
+*.csv
+*.tsv
+*.xlsx
+*.xls
+*.parquet
+*.feather
+*.hdf5
+*.h5
+*.json
+*.db
+*.sqlite
+*.sqlite3
+
+# ─────────────────────────────────────────────
+#  Generated outputs & plots
+# ─────────────────────────────────────────────
+outputs/
+eda_plots/
+
+# ─────────────────────────────────────────────
+#  Logs & profiling
+# ─────────────────────────────────────────────
+*.log
+*.prof
+logs/
+
+# ─────────────────────────────────────────────
+#  OS artifacts
+# ─────────────────────────────────────────────
+# Windows
+Thumbs.db
+ehthumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
+
+# ─────────────────────────────────────────────
+#  IDEs & editors
+# ─────────────────────────────────────────────
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ─────────────────────────────────────────────
+#  Misc
+# ─────────────────────────────────────────────
+*.bak
+*.tmp
+*.temp
