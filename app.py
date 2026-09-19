@@ -29,9 +29,15 @@ from sklearn.metrics import accuracy_score
 
 warnings.filterwarnings("ignore")
 
-# Load environment variables from .env in the project root
+# Load environment variables from .env in the project root (local) or st.secrets (Streamlit Cloud)
 load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 MAPTILER_API_KEY: str = os.getenv("MAPTILER_API_KEY", "")
+if not MAPTILER_API_KEY:
+    try:
+        MAPTILER_API_KEY = str(st.secrets.get("MAPTILER_API_KEY", ""))
+    except Exception:
+        MAPTILER_API_KEY = ""
+
 
 # ── CONSTANTS ─────────────────────────────────────────────────────────────────
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -119,6 +125,12 @@ _init_state()
 @st.cache_data(show_spinner=False)
 def load_data() -> pd.DataFrame:
     """Load and cache the crash-level CSV from disk."""
+    if not os.path.exists(DATA_PATH):
+        st.error(
+            f"Dataset not found at `{DATA_PATH}`. "
+            "Please ensure `data/processed/crash_level_accidents.csv` is committed and pushed to the repository."
+        )
+        st.stop()
     return pd.read_csv(DATA_PATH)
 
 

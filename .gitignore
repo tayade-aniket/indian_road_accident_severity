@@ -43,6 +43,9 @@ models/*.h5
 models/*.pt
 models/*.pth
 models/*.onnx
+# Whitelist pre-trained models needed for Streamlit app
+!models/best_model_bundle.joblib
+!models/decision_tree_severity.joblib
 
 # ─────────────────────────────────────────────
 #  Data files (keep folder structure, ignore content)
@@ -65,6 +68,9 @@ data/processed/*
 *.db
 *.sqlite
 *.sqlite3
+
+# Whitelist processed data required for Streamlit app
+!data/processed/crash_level_accidents.csv
 
 # ─────────────────────────────────────────────
 #  Generated outputs & plots
