@@ -159,7 +159,7 @@ flowchart LR
 
 ### 1. Severity Distribution
 
-![Dashboard](./eda_plots/01_severity_distribution.png)
+![Severity Distribution](./eda_plots/01_severity_distribution.png)
 
 ### 2 · Severity by Weather Condition
 

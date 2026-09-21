@@ -75,8 +75,11 @@ data/processed/*
 # ─────────────────────────────────────────────
 #  Generated outputs & plots
 # ─────────────────────────────────────────────
-outputs/
-eda_plots/
+# Tracking eda_plots and key evaluation outputs for GitHub documentation
+!eda_plots/
+!eda_plots/**
+!outputs/
+!outputs/**
 
 # ─────────────────────────────────────────────
 #  Logs & profiling
