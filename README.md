@@ -159,63 +159,63 @@ flowchart LR
 
 ### 1. Severity Distribution
 
-![Severity Distribution](eda_plots/01_severity_distribution.png)
+![Severity Distribution](./eda_plots/01_severity_distribution.png)
 
 ### 2 · Severity by Weather Condition
 
-![Severity by Weather](eda_plots/02_severity_by_weather.png)
+![Severity by Weather](./eda_plots/02_severity_by_weather.png)
 
 ### 3 · Severity by Route Category
 
-![Severity by Route](eda_plots/03_severity_by_route.png)
+![Severity by Route](./eda_plots/03_severity_by_route.png)
 
 ### 4 · Severity by Primary Cause
 
-![Severity by Cause](eda_plots/04_severity_by_cause.png)
+![Severity by Cause](./eda_plots/04_severity_by_cause.png)
 
 ### 5 · Speed Distribution by Severity
 
-![Speed by Severity](eda_plots/05_speed_by_severity.png)
+![Speed by Severity](./eda_plots/05_speed_by_severity.png)
 
 ### 6 · Severity by Vehicle Type
 
-![Severity by Vehicle](eda_plots/06_severity_by_vehicle.png)
+![Severity by Vehicle](./eda_plots/06_severity_by_vehicle.png)
 
 ### 7 · Crashes by Hour of Day
 
-![Crashes by Hour](eda_plots/07_crashes_by_hour.png)
+![Crashes by Hour](./eda_plots/07_crashes_by_hour.png)
 
 ### 8 · Correlation Heatmap
 
-![Correlation Heatmap](eda_plots/08_correlation_heatmap.png)
+![Correlation Heatmap](./eda_plots/08_correlation_heatmap.png)
 
 ### 9 · Model Confusion Matrix
 
-![Confusion Matrix](eda_plots/09_confusion_matrix.png)
+![Confusion Matrix](./eda_plots/09_confusion_matrix.png)
 
 ### 10 · Feature Importance
 
-![Feature Importance](eda_plots/10_feature_importance.png)
+![Feature Importance](./eda_plots/10_feature_importance.png)
 
 ### 11 · Numeric Correlation Heatmap
 
-![Numeric Correlation Heatmap](eda_plots/11_numeric_correlation_heatmap.png)
+![Numeric Correlation Heatmap](./eda_plots/11_numeric_correlation_heatmap.png)
 
 ### 12 · Speed vs Severity
 
-![Speed vs Severity](eda_plots/12_speed_vs_severity.png)
+![Speed vs Severity](./eda_plots/12_speed_vs_severity.png)
 
 ### 13 · Age vs Severity
 
-![Age vs Severity](eda_plots/13_age_vs_severity.png)
+![Age vs Severity](./eda_plots/13_age_vs_severity.png)
 
 ### 14 · Geographic Hotspots
 
-![Geographic Hotspots](eda_plots/14_geographic_hotspots.png)
+![Geographic Hotspots](./eda_plots/14_geographic_hotspots.png)
 
 ### 15 · Top Risk Factors
 
-![Top Risk Factors](eda_plots/15_top_risk_factors.png)
+![Top Risk Factors](./eda_plots/15_top_risk_factors.png)
 
 ---
 
