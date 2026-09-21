@@ -58,6 +58,8 @@ Raw accident data exists but is buried in government PDFs and Excel files with n
 
 ## ✨ Live Demo & Features
 
+Link- [https://indianroadaccidentseverity.streamlit.app/](https://indianroadaccidentseverity.streamlit.app/)
+
 ### App Pages
 
 | Page | Icon | What It Does |
@@ -155,7 +157,7 @@ flowchart LR
 
 ## 📊 EDA Insights & Plots
 
-### 1 · Severity Distribution
+### 1. Severity Distribution
 
 ![Severity Distribution](eda_plots/01_severity_distribution.png)
 
