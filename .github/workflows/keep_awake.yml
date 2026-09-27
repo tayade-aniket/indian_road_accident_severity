@@ -1,0 +1,27 @@
+name: Keep Streamlit App Awake
+
+on:
+  schedule:
+    # Runs every 12 minutes (cron syntax: minute hour day-of-month month day-of-week)
+    - cron: '*/12 * * * *'
+  workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Hosted Streamlit App
+        run: |
+          # Replace with your Streamlit app URL or configure it in GitHub Repository Secrets as APP_URL
+          TARGET_URL="${{ secrets.APP_URL }}"
+          if [ -z "$TARGET_URL" ]; then
+            TARGET_URL="https://indian-road-accident-severity.streamlit.app"
+          fi
+          echo "Pinging $TARGET_URL at $(date -u)"
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -L "$TARGET_URL")
+          echo "HTTP Response Status: $HTTP_STATUS"
+          if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 400 ]; then
+            echo "✅ Streamlit app is awake and responsive!"
+          else
+            echo "⚠️ Warning: Received status $HTTP_STATUS from $TARGET_URL"
+          fi
