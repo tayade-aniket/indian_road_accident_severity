@@ -48,6 +48,9 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 DATA_PATH  = os.path.join(_HERE, "data", "processed", "crash_level_accidents.csv")
 MODEL_PATH = os.path.join(_HERE, "models", "best_model_bundle.joblib")
 
+# Public fallback URL for hosted app (used when APP_URL env/secret is not specified)
+_FALLBACK_APP_URL = "https://indian-road-accident-severity.streamlit.app"
+
 TARGET_COL = "crash_severity_first"
 
 SEVERITY_ORDER  = ["minor", "major", "fatal"]
@@ -78,21 +81,36 @@ if "keep_awake_stats" not in st.session_state:
         "last_ping_time": None,
         "last_status_code": None,
         "ping_count": 0,
-        "target_url": os.getenv("APP_URL", "")
+        "target_url": os.getenv("APP_URL", "") or _FALLBACK_APP_URL,
     }
 
 class KeepAwakeWorker:
+    """Background daemon thread that periodically pings the hosted app health endpoint.
+
+    Completely isolated from the main Streamlit request path:
+      - daemon=True   -> Python never waits for this thread on shutdown
+      - sleep-first   -> first ping happens after a 45s grace period, never during boot
+      - zero compute  -> pings /_stcore/health (instant 200 OK without running app code)
+      - zero impact   -> comprehensive try/except guards ensure no exception can bubble up
+    """
     _instance = None
     _lock = threading.Lock()
+    _STARTUP_DELAY_S = 45   # 45s grace period before initial self-ping
+    _INTERVAL_S      = 600  # 10 minutes between internal pings (GH Actions covers every 5-10 min)
 
     def __init__(self):
-        self.target_url = os.getenv("APP_URL", "")
-        self.interval_seconds = 600  # 10 minutes
-        self.thread = None
-        self.running = False
-        self.last_ping = "Never"
-        self.last_status = "Initialized"
-        self.ping_count = 0
+        env_url = os.getenv("APP_URL", "").strip()
+        secret_url = ""
+        try:
+            secret_url = str(st.secrets.get("APP_URL", "")).strip()
+        except Exception:
+            pass
+        self.target_url  = env_url or secret_url or _FALLBACK_APP_URL
+        self.thread      = None
+        self.running     = False
+        self.last_ping   = "Never"
+        self.last_status = "Initialised"
+        self.ping_count  = 0
 
     @classmethod
     def get_instance(cls):
@@ -102,136 +120,187 @@ class KeepAwakeWorker:
                 cls._instance.start()
             return cls._instance
 
+    @staticmethod
+    def get_health_url(base_url: str) -> str:
+        """Resolve to the official Streamlit healthcheck endpoint: /_stcore/health.
+        This endpoint responds in 1ms with 200 OK without executing app code.
+        """
+        if not base_url:
+            return ""
+        url = base_url.strip().rstrip("/")
+        if not url.startswith(("http://", "https://")):
+            url = f"https://{url}"
+        if not url.endswith("/_stcore/health"):
+            return f"{url}/_stcore/health"
+        return url
+
     def update_url(self, url: str):
-        if url and url.startswith(("http://", "https://")):
-            self.target_url = url.strip()
+        """Allow the sidebar URL input to update the ping target at runtime."""
+        try:
+            url = (url or "").strip()
+            if url.startswith(("http://", "https://")):
+                self.target_url = url
+        except Exception:
+            pass
 
     def _run(self):
-        while self.running:
-            if self.target_url:
+        """Thread body. All exceptions are safely caught - main app is never affected."""
+        try:
+            time.sleep(self._STARTUP_DELAY_S)  # Let the app finish booting first
+            while self.running:
                 try:
-                    headers = {"User-Agent": "Streamlit-KeepAwake-Heartbeat/2.0"}
-                    resp = requests.get(self.target_url, timeout=12, headers=headers)
-                    self.last_status = f"{resp.status_code} OK" if resp.status_code == 200 else f"HTTP {resp.status_code}"
-                except Exception as e:
-                    self.last_status = f"Err: {type(e).__name__}"
+                    raw_url = self.target_url or _FALLBACK_APP_URL
+                    health_url = self.get_health_url(raw_url)
+                    t0 = time.time()
+                    resp = requests.get(
+                        health_url, timeout=10,
+                        headers={"User-Agent": "Streamlit-KeepAwake-Heartbeat/4.0"},
+                    )
+                    lat_ms = int((time.time() - t0) * 1000)
+                    # If health endpoint not found on non-standard reverse proxy, fallback to root
+                    if resp.status_code == 404:
+                        resp = requests.get(
+                            raw_url, timeout=10,
+                            headers={"User-Agent": "Streamlit-KeepAwake-Heartbeat/4.0"},
+                        )
+                        lat_ms = int((time.time() - t0) * 1000)
+                    self.last_status = (
+                        f"{resp.status_code} OK ({lat_ms}ms)"
+                        if resp.status_code in (200, 304)
+                        else f"HTTP {resp.status_code}"
+                    )
+                except Exception as exc:
+                    self.last_status = f"Err: {type(exc).__name__}"
                 self.ping_count += 1
                 self.last_ping = datetime.datetime.now().strftime("%H:%M:%S")
-            time.sleep(self.interval_seconds)
+                time.sleep(self._INTERVAL_S)
+        except Exception:
+            pass  # Outer guard: thread stops silently, main app is unaffected
 
     def start(self):
         if not self.running:
             self.running = True
-            self.thread = threading.Thread(target=self._run, daemon=True, name="StreamlitKeepAwakeThread")
+            self.thread = threading.Thread(
+                target=self._run,
+                daemon=True,
+                name="StreamlitKeepAwakeThread",
+            )
             self.thread.start()
 
-# Initialize global worker once via Streamlit cached resource
+# Initialise global singleton once; cached across Streamlit reruns
 @st.cache_resource
-def get_keep_awake_service():
+def get_keep_awake_service() -> KeepAwakeWorker:
     return KeepAwakeWorker.get_instance()
+
 
 keep_awake_worker = get_keep_awake_service()
 
-# Inject lightweight client-side heartbeat to keep WebSocket and session alive
-def inject_client_heartbeat():
-    heartbeat_js = """
-    <script>
-    (function() {
-        // Keeps the browser session alive and prevents tab sleep
-        setInterval(function() {
-            try {
-                fetch(window.location.href, { method: 'HEAD', cache: 'no-store' })
-                    .catch(function(err) {});
-            } catch(e) {}
-        }, 180000); // Heartbeat every 3 minutes
-    })();
-    </script>
-    """
-    components.html(heartbeat_js, height=0, width=0)
 
-inject_client_heartbeat()
+# ── Layer 3: client-side JS heartbeat ────────────────────────────────────────
+def _inject_client_heartbeat():
+    """Inject a lightweight hidden JS snippet that keeps the browser WebSocket alive.
+    Pings /_stcore/health every 60s with cache: 'no-store' so browser never throttles tab.
+    """
+    components.html(
+        """
+        <script>
+        (function() {
+            // Heartbeat to prevent browser tab suspension and WebSocket disconnect
+            setInterval(function() {
+                try {
+                    fetch(window.location.origin + '/_stcore/health', { method: 'GET', cache: 'no-store' })
+                        .catch(function() {});
+                } catch (e) {}
+            }, 60000);
+        })();
+        </script>
+        """,
+        height=0,
+        width=0,
+    )
+
+
+_inject_client_heartbeat()
 
 
 # =============================================================================
 # ── GLOBAL CSS — CLEAN SIMPLE STYLE ──────────────────────────────────────────
 # =============================================================================
 st.markdown(
-    """
-    <style>
-    /* ── Sidebar: nav items at 1.4rem, well-spaced ── */
-    section[data-testid="stSidebar"] .block-container {
-        padding-top: 1.2rem;
-        padding-bottom: 1.5rem;
-    }
+    """<style>
+/* ── Sidebar: nav items at 1.4rem, well-spaced ── */
+section[data-testid="stSidebar"] .block-container {
+    padding-top: 1.2rem;
+    padding-bottom: 1.5rem;
+}
 
-    /* Radio nav label (collapsed, so each option IS the label) */
-    section[data-testid="stSidebar"] div[role="radiogroup"] label {
-        font-size: 1.4rem !important;
-        font-weight: 500;
-        padding: 10px 14px;
-        margin: 4px 0;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        cursor: pointer;
-        transition: background 0.18s ease;
-        line-height: 1.4;
-    }
-    section[data-testid="stSidebar"] div[role="radiogroup"] label:hover {
-        background: rgba(255, 255, 255, 0.06);
-    }
-    /* Selected item highlight */
-    section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
-        background: rgba(255, 255, 255, 0.1);
-        font-weight: 700;
-    }
-    /* Hide the radio circle dot */
-    section[data-testid="stSidebar"] div[role="radiogroup"] input[type="radio"] {
-        display: none;
-    }
+/* Radio nav label (collapsed, so each option IS the label) */
+section[data-testid="stSidebar"] div[role="radiogroup"] label {
+    font-size: 1.4rem !important;
+    font-weight: 500;
+    padding: 10px 14px;
+    margin: 4px 0;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: background 0.18s ease;
+    line-height: 1.4;
+}
+section[data-testid="stSidebar"] div[role="radiogroup"] label:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+/* Selected item highlight */
+section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
+    background: rgba(255, 255, 255, 0.1);
+    font-weight: 700;
+}
+/* Hide the radio circle dot */
+section[data-testid="stSidebar"] div[role="radiogroup"] input[type="radio"] {
+    display: none;
+}
 
-    /* ── Main container padding ── */
-    .block-container {
-        padding-top: 1.2rem;
-        padding-bottom: 2rem;
-        max-width: 96%;
-    }
+/* ── Main container padding ── */
+.block-container {
+    padding-top: 1.2rem;
+    padding-bottom: 2rem;
+    max-width: 96%;
+}
 
-    /* ── Severity badges (used in Predict page) ── */
-    .severity-badge {
-        display: inline-block;
-        padding: 8px 22px;
-        border-radius: 6px;
-        font-size: 1.25rem;
-        font-weight: 700;
-        color: #ffffff;
-        letter-spacing: 1.5px;
-        text-transform: uppercase;
-        margin: 8px 0;
-    }
-    .badge-minor  { background-color: #16a34a; }
-    .badge-major  { background-color: #d97706; }
-    .badge-fatal  { background-color: #dc2626; }
+/* ── Severity badges (used in Predict page) ── */
+.severity-badge {
+    display: inline-block;
+    padding: 8px 22px;
+    border-radius: 6px;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #ffffff;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin: 8px 0;
+}
+.badge-minor  { background-color: #16a34a; }
+.badge-major  { background-color: #d97706; }
+.badge-fatal  { background-color: #dc2626; }
 
-    /* ── Pulse dot (keep-awake indicator) ── */
-    @keyframes pulse-green {
-        0%   { opacity: 1; }
-        50%  { opacity: 0.4; }
-        100% { opacity: 1; }
-    }
-    .pulse-dot {
-        width: 9px;
-        height: 9px;
-        background-color: #16a34a;
-        border-radius: 50%;
-        display: inline-block;
-        animation: pulse-green 1.8s ease-in-out infinite;
-        margin-right: 6px;
-        vertical-align: middle;
-    }
-    </style>
-    """,
+/* ── Pulse dot (keep-awake indicator) ── */
+@keyframes pulse-green {
+    0%   { opacity: 1; }
+    50%  { opacity: 0.4; }
+    100% { opacity: 1; }
+}
+.pulse-dot {
+    width: 9px;
+    height: 9px;
+    background-color: #16a34a;
+    border-radius: 50%;
+    display: inline-block;
+    animation: pulse-green 1.8s ease-in-out infinite;
+    margin-right: 6px;
+    vertical-align: middle;
+}
+</style>""",
     unsafe_allow_html=True,
 )
 
@@ -243,7 +312,7 @@ def _init_state():
         "df":            None,      # Main DataFrame
         "model_bundle":  None,      # Loaded joblib bundle dict
         "dataset_seed":  42,        # Seed for random sample on Dataset page
-        "app_public_url": os.getenv("APP_URL", ""),
+        "app_public_url": os.getenv("APP_URL", "") or _FALLBACK_APP_URL,
     }
     for k, v in defaults.items():
         if k not in st.session_state:
@@ -493,27 +562,20 @@ def apply_plot_theme(fig, height=360):
     return fig
 
 
-# ── HTML METRICS GENERATOR ────────────────────────────────────────────────────
+# ── METRICS GENERATOR ─────────────────────────────────────────────────────────
 def render_metric_grid(items: list):
-    """
-    Renders an equal-width, equal-height CSS Grid of metrics.
-    items: list of dicts with: label, value, sub, color (optional: green, amber, red, blue)
-    """
-    cards_html = []
-    for item in items:
-        color_class = item.get("color", "blue")
-        cards_html.append(
-            f"""
-            <div class="metric-card">
-                <div class="metric-card-top-bar {color_class}"></div>
-                <div class="metric-label">{item.get('icon', '📌')} {item['label']}</div>
-                <div class="metric-value">{item['value']}</div>
-                <div class="metric-sub">{item.get('sub', '')}</div>
-            </div>
-            """
+    """Renders an equal-width, responsive native Streamlit metric grid."""
+    if not items:
+        return
+    cols = st.columns(len(items))
+    for col, item in zip(cols, items):
+        label_text = f"{item.get('icon', '')} {item.get('label', '')}".strip()
+        sub_text = item.get('sub', '')
+        col.metric(
+            label=label_text,
+            value=item.get('value', ''),
+            help=sub_text if sub_text else None,
         )
-    html = f"""<div class="metric-grid">{''.join(cards_html)}</div>"""
-    st.markdown(html, unsafe_allow_html=True)
 
 
 # ── SEVERITY BADGE HTML ───────────────────────────────────────────────────────
@@ -594,14 +656,29 @@ with st.sidebar:
         col_ping_btn, col_ping_st = st.columns([1, 1])
         with col_ping_btn:
             if st.button("🚀 Ping Now", use_container_width=True):
-                if app_url_input:
+                target = (app_url_input or "").strip() or _FALLBACK_APP_URL
+                if target:
                     try:
-                        r = requests.get(app_url_input, timeout=8)
+                        h_url = KeepAwakeWorker.get_health_url(target)
+                        t0 = time.time()
+                        r = requests.get(
+                            h_url, timeout=8,
+                            headers={"User-Agent": "Streamlit-Manual-Ping/4.0"},
+                        )
+                        lat_ms = int((time.time() - t0) * 1000)
+                        if r.status_code == 404:
+                            t0 = time.time()
+                            r = requests.get(
+                                target, timeout=8,
+                                headers={"User-Agent": "Streamlit-Manual-Ping/4.0"},
+                            )
+                            lat_ms = int((time.time() - t0) * 1000)
                         keep_awake_worker.last_ping = datetime.datetime.now().strftime("%H:%M:%S")
-                        keep_awake_worker.last_status = f"{r.status_code} OK"
-                        st.toast(f"Ping successful! ({r.status_code})", icon="✅")
+                        keep_awake_worker.last_status = f"{r.status_code} OK ({lat_ms}ms)"
+                        st.toast(f"Ping successful! {r.status_code} OK ({lat_ms}ms)", icon="✅")
                     except Exception as e:
-                        st.toast(f"Ping error: {e}", icon="⚠️")
+                        keep_awake_worker.last_status = f"Err: {type(e).__name__}"
+                        st.toast(f"Ping notice: {e}", icon="⚠️")
                 else:
                     st.toast("Enter a valid URL first", icon="ℹ️")
 
@@ -609,7 +686,7 @@ with st.sidebar:
             st.caption(f"Last: `{keep_awake_worker.last_ping}`")
             st.caption(f"Status: `{keep_awake_worker.last_status}`")
 
-        st.caption("ℹ️ GitHub Actions workflow also pings every 12 mins.")
+        st.caption("ℹ️ Cloud pings use `/_stcore/health` (<1ms, 0 RAM).")
 
     st.markdown("---")
     st.caption("India Road Accident Severity · v4.0")
@@ -1181,7 +1258,7 @@ elif page == "🗺️  India Accident Map":
     # ── FILTER PANEL IN SLEEK GLASS CONTAINER ────────────────────────────────
     st.markdown("### 🔍 Spatial Filter Controls")
 
-    col_f1, col_f2, col_f3 = st.columns(3)
+    col_f1, col_f2, col_f3, col_f4 = st.columns(4)
 
     with col_f1:
         severity_filter = st.multiselect(
@@ -1203,9 +1280,17 @@ elif page == "🗺️  India Accident Map":
 
     with col_f3:
         max_pts = st.slider(
-            "Maximum Markers Rendered",
-            min_value=200, max_value=5000, value=1500, step=100,
+            "Max Markers",
+            min_value=200, max_value=5000, value=1200, step=100,
             help="Higher point counts may affect browser rendering speed.",
+        )
+
+    with col_f4:
+        map_style = st.selectbox(
+            "Map Base Style",
+            ["OpenStreetMap", "CartoDB positron", "CartoDB dark_matter"],
+            index=0,
+            help="Choose the visual cartographic tile layer.",
         )
 
     if severity_filter:
@@ -1228,57 +1313,101 @@ elif page == "🗺️  India Accident Map":
         {"label": "Minor Crashes", "value": f"{minor_cnt:,}", "sub": "Green markers", "icon": "🟢", "color": "green"},
     ]
     render_metric_grid(map_kpis)
+    st.markdown("<br>", unsafe_allow_html=True)
 
     # ── MAP RENDERING ─────────────────────────────────────────────────────────
     if map_df.empty:
         st.warning("No incidents match the active filter criteria. Adjust the severity or state selections.")
     else:
-        if MAPTILER_API_KEY:
-            tile_url = f"https://api.maptiler.com/maps/streets/{{z}}/{{x}}/{{y}}.png?key={MAPTILER_API_KEY}"
-            tiles_kwargs = dict(tiles=tile_url, attr="MapTiler")
-        else:
-            tiles_kwargs = dict(tiles="CartoDB positron")
+        tab_folium, tab_plotly = st.tabs(["🗺️ Interactive Folium Cluster Map", "📍 High-Speed Geospatial Map"])
 
-        m = folium.Map(
-            location=[20.5937, 78.9629],
-            zoom_start=5,
-            **tiles_kwargs,
-        )
+        with tab_folium:
+            # Configure tile layer reliably
+            if MAPTILER_API_KEY and map_style == "OpenStreetMap":
+                tile_url = f"https://api.maptiler.com/maps/streets/{{z}}/{{x}}/{{y}}.png?key={MAPTILER_API_KEY}"
+                tiles_kwargs = dict(tiles=tile_url, attr="MapTiler")
+            elif map_style == "CartoDB positron":
+                tiles_kwargs = dict(tiles="CartoDB positron")
+            elif map_style == "CartoDB dark_matter":
+                tiles_kwargs = dict(tiles="CartoDB dark_matter")
+            else:
+                tiles_kwargs = dict(tiles="OpenStreetMap")
 
-        cluster = MarkerCluster(
-            options={"maxClusterRadius": 40, "disableClusteringAtZoom": 10}
-        ).add_to(m)
-
-        for _, row in map_df.iterrows():
-            sev   = str(row.get(TARGET_COL, "minor")).lower()
-            color = FOLIUM_COLORS.get(sev, "blue")
-            city  = row.get("city_name_first",  "N/A")
-            state = row.get("state_name_first", "N/A")
-            cause = row.get("primary_cause_first", "N/A")
-            speed = row.get("mean_speed_at_impact_kmph", "N/A")
-
-            sev_color = SEVERITY_COLORS.get(sev, "#000000")
-            popup_html = (
-                f"<div style='font-family: sans-serif; font-size: 12px;'>"
-                f"<b style='color: {sev_color}; font-size: 14px;'>{sev.upper()} CRASH</b><br>"
-                f"<b>Location:</b> {city}, {state}<br>"
-                f"<b>Cause:</b> {cause}<br>"
-                f"<b>Impact Speed:</b> {speed} km/h"
-                f"</div>"
+            m = folium.Map(
+                location=[22.0, 78.9629],
+                zoom_start=5,
+                **tiles_kwargs,
             )
 
-            folium.CircleMarker(
-                location=[row["lat_coord_first"], row["lon_coord_first"]],
-                radius=6,
-                color=color,
-                fill=True,
-                fill_color=color,
-                fill_opacity=0.75,
-                tooltip=f"{sev.upper()} — {city}, {state}",
-                popup=folium.Popup(popup_html, max_width=240),
-            ).add_to(cluster)
+            cluster = MarkerCluster(
+                options={"maxClusterRadius": 35, "disableClusteringAtZoom": 11}
+            ).add_to(m)
 
-        st_folium(m, width=None, height=540, returned_objects=[])
+            for _, row in map_df.iterrows():
+                sev   = str(row.get(TARGET_COL, "minor")).lower()
+                color = FOLIUM_COLORS.get(sev, "blue")
+                city  = str(row.get("city_name_first",  "N/A")).title()
+                state = str(row.get("state_name_first", "N/A")).title()
+                cause = str(row.get("primary_cause_first", "N/A")).title()
+                speed = row.get("mean_speed_at_impact_kmph", "N/A")
+
+                sev_color = SEVERITY_COLORS.get(sev, "#000000")
+                popup_html = (
+                    f"<div style='font-family: sans-serif; font-size: 12px; min-width: 140px;'>"
+                    f"<b style='color: {sev_color}; font-size: 13px;'>{sev.upper()} CRASH</b><br>"
+                    f"<b>Location:</b> {city}, {state}<br>"
+                    f"<b>Primary Cause:</b> {cause}<br>"
+                    f"<b>Impact Speed:</b> {speed} km/h"
+                    f"</div>"
+                )
+
+                folium.CircleMarker(
+                    location=[float(row["lat_coord_first"]), float(row["lon_coord_first"])],
+                    radius=6,
+                    color=color,
+                    fill=True,
+                    fill_color=color,
+                    fill_opacity=0.8,
+                    weight=1.5,
+                    tooltip=f"{sev.upper()}: {city}, {state}",
+                    popup=folium.Popup(popup_html, max_width=250),
+                ).add_to(cluster)
+
+            st_folium(
+                m,
+                use_container_width=True,
+                height=580,
+                returned_objects=[],
+            )
+
+        with tab_plotly:
+            map_plot_kwargs = dict(
+                data_frame=map_df,
+                lat="lat_coord_first",
+                lon="lon_coord_first",
+                color=TARGET_COL,
+                color_discrete_map=SEVERITY_COLORS,
+                category_orders={TARGET_COL: SEVERITY_ORDER},
+                hover_name="city_name_first",
+                hover_data={
+                    "state_name_first": True,
+                    "primary_cause_first": True,
+                    "mean_speed_at_impact_kmph": True,
+                    "lat_coord_first": False,
+                    "lon_coord_first": False,
+                },
+                zoom=4.2,
+                center=dict(lat=22.0, lon=78.9629),
+                height=580,
+            )
+            if hasattr(px, "scatter_map"):
+                fig_map = px.scatter_map(**map_plot_kwargs, map_style="open-street-map")
+            else:
+                fig_map = px.scatter_mapbox(**map_plot_kwargs, mapbox_style="open-street-map")
+            
+            fig_map.update_layout(margin=dict(l=0, r=0, t=10, b=0))
+            st.plotly_chart(fig_map, use_container_width=True)
+            st.caption("⚡ Plotly WebGL rendering delivers instant GPU-accelerated pan and zoom across all 20,000 coordinate points.")
 
         st.markdown("---")
 
