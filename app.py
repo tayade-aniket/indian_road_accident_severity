@@ -153,298 +153,82 @@ inject_client_heartbeat()
 
 
 # =============================================================================
-# ── ULTRA-MODERN GLOBAL CSS & DESIGN SYSTEM ──────────────────────────────────
+# ── GLOBAL CSS — CLEAN SIMPLE STYLE ──────────────────────────────────────────
 # =============================================================================
 st.markdown(
     """
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
-
-    /* Global typography */
-    html, body, [class*="css"] {
-        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    /* ── Sidebar: nav items at 1.4rem, well-spaced ── */
+    section[data-testid="stSidebar"] .block-container {
+        padding-top: 1.2rem;
+        padding-bottom: 1.5rem;
     }
 
-    /* Container padding */
+    /* Radio nav label (collapsed, so each option IS the label) */
+    section[data-testid="stSidebar"] div[role="radiogroup"] label {
+        font-size: 1.4rem !important;
+        font-weight: 500;
+        padding: 10px 14px;
+        margin: 4px 0;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        transition: background 0.18s ease;
+        line-height: 1.4;
+    }
+    section[data-testid="stSidebar"] div[role="radiogroup"] label:hover {
+        background: rgba(255, 255, 255, 0.06);
+    }
+    /* Selected item highlight */
+    section[data-testid="stSidebar"] div[role="radiogroup"] label:has(input:checked) {
+        background: rgba(255, 255, 255, 0.1);
+        font-weight: 700;
+    }
+    /* Hide the radio circle dot */
+    section[data-testid="stSidebar"] div[role="radiogroup"] input[type="radio"] {
+        display: none;
+    }
+
+    /* ── Main container padding ── */
     .block-container {
         padding-top: 1.2rem;
         padding-bottom: 2rem;
         max-width: 96%;
     }
 
-    /* Gradient Brand Header */
-    .hero-banner {
-        background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.9) 50%, rgba(15, 23, 42, 0.98) 100%);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 18px;
-        padding: 28px 32px;
-        margin-bottom: 24px;
-        position: relative;
-        overflow: hidden;
-        box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.4);
-    }
-    .hero-banner::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        right: -20%;
-        width: 320px;
-        height: 320px;
-        background: radial-gradient(circle, rgba(99, 102, 241, 0.25) 0%, transparent 70%);
-        pointer-events: none;
-    }
-    .hero-title {
-        font-size: 2.2rem;
-        font-weight: 800;
-        background: linear-gradient(90deg, #ffffff 0%, #cbd5e1 50%, #93c5fd 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        margin: 0 0 8px 0;
-        letter-spacing: -0.5px;
-    }
-    .hero-subtitle {
-        color: #94a3b8;
-        font-size: 1.05rem;
-        font-weight: 400;
-        margin: 0;
-        line-height: 1.5;
-    }
-
-    /* Metric Cards Grid */
-    .metric-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-        gap: 16px;
-        margin: 16px 0 24px 0;
-    }
-    .metric-card {
-        background: linear-gradient(145deg, rgba(30, 41, 59, 0.75) 0%, rgba(15, 23, 42, 0.85) 100%);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 14px;
-        padding: 18px 20px;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        min-height: 110px;
-        transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s ease, border-color 0.25s ease;
-        position: relative;
-        overflow: hidden;
-    }
-    .metric-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 12px 25px -8px rgba(0, 0, 0, 0.5);
-        border-color: rgba(99, 102, 241, 0.4);
-    }
-    .metric-card-top-bar {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 3px;
-        background: linear-gradient(90deg, #6366f1, #8b5cf6, #ec4899);
-    }
-    .metric-card-top-bar.green { background: linear-gradient(90deg, #10b981, #059669); }
-    .metric-card-top-bar.amber { background: linear-gradient(90deg, #f59e0b, #d97706); }
-    .metric-card-top-bar.red   { background: linear-gradient(90deg, #ef4444, #b91c1c); }
-    .metric-card-top-bar.blue  { background: linear-gradient(90deg, #38bdf8, #3b82f6); }
-
-    .metric-label {
-        font-size: 0.82rem;
-        font-weight: 600;
-        color: #94a3b8;
-        text-transform: uppercase;
-        letter-spacing: 0.8px;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }
-    .metric-value {
-        font-size: 1.85rem;
-        font-weight: 800;
-        color: #f8fafc;
-        margin: 6px 0 2px 0;
-        letter-spacing: -0.5px;
-        font-family: 'JetBrains Mono', monospace;
-    }
-    .metric-sub {
-        font-size: 0.78rem;
-        color: #64748b;
-        font-weight: 500;
-    }
-
-    /* Structured Equal-Height Containers for Plots and Insights */
-    .equal-container {
-        background: linear-gradient(145deg, rgba(30, 41, 59, 0.6) 0%, rgba(15, 23, 42, 0.75) 100%);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 16px;
-        padding: 20px 22px;
-        height: 480px;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        box-sizing: border-box;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
-        margin-bottom: 20px;
-    }
-    .equal-container-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding-bottom: 12px;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-        margin-bottom: 12px;
-    }
-    .equal-container-title {
-        font-size: 1.05rem;
-        font-weight: 700;
-        color: #f1f5f9;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin: 0;
-    }
-    .equal-container-badge {
-        font-size: 0.75rem;
-        font-weight: 600;
-        padding: 3px 10px;
-        border-radius: 20px;
-        background: rgba(255, 255, 255, 0.08);
-        color: #cbd5e1;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-    }
-    .equal-container-body {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        overflow: hidden;
-    }
-    .equal-container-footer {
-        padding-top: 12px;
-        border-top: 1px solid rgba(255, 255, 255, 0.08);
-        font-size: 0.82rem;
-        color: #94a3b8;
-        line-height: 1.45;
-        background: rgba(15, 23, 42, 0.4);
-        border-radius: 8px;
-        padding: 10px 14px;
-        margin-top: 10px;
-    }
-
-    /* Severity Badges with Dynamic Glowing Gradients */
+    /* ── Severity badges (used in Predict page) ── */
     .severity-badge {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 10px 24px;
-        border-radius: 9999px;
-        font-size: 1.3rem;
-        font-weight: 800;
+        display: inline-block;
+        padding: 8px 22px;
+        border-radius: 6px;
+        font-size: 1.25rem;
+        font-weight: 700;
         color: #ffffff;
-        letter-spacing: 2px;
+        letter-spacing: 1.5px;
         text-transform: uppercase;
         margin: 8px 0;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
     }
-    .badge-minor {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
-    }
-    .badge-major {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        box-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
-    }
-    .badge-fatal {
-        background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
-        box-shadow: 0 0 25px rgba(239, 68, 68, 0.5);
-    }
+    .badge-minor  { background-color: #16a34a; }
+    .badge-major  { background-color: #d97706; }
+    .badge-fatal  { background-color: #dc2626; }
 
-    /* Pulse animation for Live Keep-Awake pill */
+    /* ── Pulse dot (keep-awake indicator) ── */
     @keyframes pulse-green {
-        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-        70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
-        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        0%   { opacity: 1; }
+        50%  { opacity: 0.4; }
+        100% { opacity: 1; }
     }
     .pulse-dot {
         width: 9px;
         height: 9px;
-        background-color: #10b981;
+        background-color: #16a34a;
         border-radius: 50%;
         display: inline-block;
-        animation: pulse-green 2s infinite;
+        animation: pulse-green 1.8s ease-in-out infinite;
         margin-right: 6px;
-    }
-
-    /* Sleek card for Objective & Feature Grid */
-    .glass-card {
-        background: linear-gradient(145deg, rgba(30, 41, 59, 0.65) 0%, rgba(15, 23, 42, 0.75) 100%);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-left: 4px solid #6366f1;
-        border-radius: 12px;
-        padding: 16px 20px;
-        margin-bottom: 12px;
-        height: 100%;
-        min-height: 110px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        transition: transform 0.2s ease, border-color 0.2s ease;
-    }
-    .glass-card:hover {
-        transform: translateY(-2px);
-        border-left-color: #a855f7;
-    }
-    .glass-card b {
-        color: #f8fafc;
-        font-size: 0.98rem;
-    }
-    .glass-card span {
-        color: #94a3b8;
-        font-size: 0.85rem;
-        margin-top: 4px;
-        line-height: 1.45;
-    }
-
-    /* Sidebar Clean Styling */
-    section[data-testid="stSidebar"] {
-        background-color: #0b1120;
-        border-right: 1px solid rgba(255, 255, 255, 0.08);
-    }
-    section[data-testid="stSidebar"] .block-container {
-        padding-top: 1.5rem;
-    }
-
-    /* Modern Tabs */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-        background-color: rgba(15, 23, 42, 0.6);
-        padding: 6px;
-        border-radius: 12px;
-        border: 1px solid rgba(255, 255, 255, 0.08);
-    }
-    .stTabs [data-baseweb="tab"] {
-        border-radius: 8px;
-        padding: 8px 18px;
-        font-weight: 600;
-        color: #94a3b8;
-    }
-    .stTabs [aria-selected="true"] {
-        background: linear-gradient(135deg, rgba(99, 102, 241, 0.3) 0%, rgba(168, 85, 247, 0.2) 100%);
-        color: #ffffff !important;
-        border: 1px solid rgba(99, 102, 241, 0.4);
-    }
-
-    /* Button enhancements */
-    div.stButton > button:first-child {
-        border-radius: 10px;
-        font-weight: 700;
-        letter-spacing: 0.3px;
-        padding: 0.55rem 1.4rem;
-        transition: all 0.25s ease;
-    }
-    div.stButton > button:first-child:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 20px -4px rgba(99, 102, 241, 0.5);
+        vertical-align: middle;
     }
     </style>
     """,
@@ -755,18 +539,8 @@ if st.session_state.model_bundle is None:
 # ── SIDEBAR NAVIGATION & KEEP-AWAKE MONITOR ───────────────────────────────────
 # =============================================================================
 with st.sidebar:
-    st.markdown(
-        """
-        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-            <div style="font-size: 2rem;">🚦</div>
-            <div>
-                <h3 style="margin: 0; font-weight: 800; color: #f8fafc; font-size: 1.25rem;">Road Safety AI</h3>
-                <span style="font-size: 0.75rem; color: #94a3b8; font-weight: 600; letter-spacing: 0.5px;">INDIA ACCIDENT INTELLIGENCE</span>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    st.markdown("## 🚦 Road Safety AI")
+    st.caption("India Accident Intelligence")
     st.markdown("---")
 
     page = st.radio(
@@ -781,37 +555,30 @@ with st.sidebar:
     df_ok    = st.session_state.df is not None
     model_ok = st.session_state.model_bundle is not None
 
-    st.markdown("##### ⚙️ System Status")
-    st.markdown(f"**Dataset:** {'🟢 Loaded' if df_ok else '🔴 Not found'}")
+    st.markdown("**⚙️ System Status**")
+    st.markdown(f"Dataset: {'🟢 Loaded' if df_ok else '🔴 Not found'}")
 
     if model_ok:
         is_fallback  = st.session_state.model_bundle.get("_fallback", False)
         model_name   = st.session_state.model_bundle.get("model_name", "Random Forest" if is_fallback else "XGBoost")
         acc          = st.session_state.model_bundle.get("metrics", {}).get("accuracy", "—")
-        st.markdown(f"**Model:** `{model_name}`")
-        st.markdown(f"**Accuracy:** `{acc}%`")
+        st.markdown(f"Model: `{model_name}`")
+        st.markdown(f"Accuracy: `{acc}%`")
     else:
-        st.markdown("**Model:** 🔴 Not found")
+        st.markdown("Model: 🔴 Not found")
 
     if df_ok:
-        st.markdown(f"**Records:** `{len(st.session_state.df):,}`")
+        st.markdown(f"Records: `{len(st.session_state.df):,}`")
 
     st.markdown("---")
 
     # ── KEEP-AWAKE CONTROLS & HEARTBEAT STATUS ───────────────────────────────
-    with st.expander("⚡ Keep-Awake Engine", expanded=True):
+    with st.expander("⚡ Keep-Awake Engine", expanded=False):
         st.markdown(
-            """
-            <div style="display: flex; align-items: center; margin-bottom: 8px;">
-                <span class="pulse-dot"></span>
-                <span style="font-size: 0.85rem; font-weight: 700; color: #10b981;">ENGINE ACTIVE (AWAKE)</span>
-            </div>
-            <div style="font-size: 0.78rem; color: #94a3b8; margin-bottom: 10px; line-height: 1.4;">
-                Maintains active connection & sends automated self-pings to prevent host timeouts.
-            </div>
-            """,
+            '<span class="pulse-dot"></span> **ENGINE ACTIVE**',
             unsafe_allow_html=True,
         )
+        st.caption("Sends self-pings to prevent host timeouts.")
 
         app_url_input = st.text_input(
             "Hosted App URL",
@@ -842,10 +609,10 @@ with st.sidebar:
             st.caption(f"Last: `{keep_awake_worker.last_ping}`")
             st.caption(f"Status: `{keep_awake_worker.last_status}`")
 
-        st.caption("ℹ️ *A GitHub Actions workflow is also active in `.github/workflows/keep_awake.yml` to wake your app every 12 mins.*")
+        st.caption("ℹ️ GitHub Actions workflow also pings every 12 mins.")
 
     st.markdown("---")
-    st.caption("Indian Road Accident Severity Intelligence\nv4.0 · Modernized Dashboard")
+    st.caption("India Road Accident Severity · v4.0")
 
 
 # =============================================================================
@@ -855,19 +622,12 @@ with st.sidebar:
 # =============================================================================
 if page == "🏠  Home":
 
-    # ── HERO BANNER ──────────────────────────────────────────────────────────
-    st.markdown(
-        """
-        <div class="hero-banner">
-            <h1 class="hero-title">🚦 Indian Road Accident Severity Intelligence</h1>
-            <p class="hero-subtitle">
-                Advanced machine learning platform for predicting, analyzing, and mitigating crash severity
-                across National & State highways in India.
-            </p>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    st.title("🚦 Indian Road Accident Severity Intelligence")
+    st.caption(
+        "Advanced machine learning platform for predicting, analyzing, and mitigating crash severity "
+        "across National & State highways in India."
     )
+    st.markdown("---")
 
     # ── PROBLEM STATEMENT & NATIONAL CONTEXT ─────────────────────────────────
     with st.expander("📋 National Road Safety Challenge — Key Statistics", expanded=True):
@@ -888,40 +648,30 @@ if page == "🏠  Home":
             st.metric("Annual Fatalities", "1.68 Lakh+", "40 / hour")
             st.metric("Economic Cost", "₹1.47 Lakh Cr.", "3.14% GDP")
 
-    # ── KEY STATS GRID ────────────────────────────────────────────────────────
+    # ── KEY STATS ─────────────────────────────────────────────────────────────
     if st.session_state.df is not None:
         df = st.session_state.df
 
-        st.markdown("### 📊 Dataset Overview at a Glance")
+        st.markdown("### 📊 Dataset Overview")
 
         fatal_rate_str = f"{(df[TARGET_COL] == 'fatal').mean() * 100:.1f}%" if TARGET_COL in df.columns else "N/A"
-        cities_count = f"{df['city_name_first'].nunique():,}" if "city_name_first" in df.columns else "—"
-        states_count = f"{df['state_name_first'].nunique():,}" if "state_name_first" in df.columns else "—"
+        cities_count   = df['city_name_first'].nunique() if "city_name_first" in df.columns else "—"
+        states_count   = df['state_name_first'].nunique() if "state_name_first" in df.columns else "—"
 
-        metrics = [
-            {"label": "Total Crash Records", "value": f"{len(df):,}", "sub": "Aggregated crash events", "icon": "📋", "color": "blue"},
-            {"label": "Features Tracked", "value": f"{df.shape[1]}", "sub": "Road, weather & vehicle dims", "icon": "📌", "color": "blue"},
-            {"label": "Monitored Cities", "value": cities_count, "sub": "Urban & semi-urban clusters", "icon": "🏙️", "color": "green"},
-            {"label": "Indian States", "value": states_count, "sub": "Geographic coverage", "icon": "🗺️", "color": "amber"},
-            {"label": "Fatal Severity Rate", "value": fatal_rate_str, "sub": "High-risk critical events", "icon": "💀", "color": "red"},
-        ]
-        render_metric_grid(metrics)
+        m1, m2, m3, m4, m5 = st.columns(5)
+        m1.metric("Total Crash Records", f"{len(df):,}")
+        m2.metric("Features Tracked",    f"{df.shape[1]}")
+        m3.metric("Monitored Cities",    f"{cities_count:,}" if isinstance(cities_count, int) else cities_count)
+        m4.metric("Indian States",       f"{states_count:,}" if isinstance(states_count, int) else states_count)
+        m5.metric("Fatal Severity Rate", fatal_rate_str)
 
-        # ── EQUAL WIDTH & HEIGHT PLOTS AND INSIGHTS ───────────────────────────
+        st.markdown("---")
+
+        # ── CHARTS ────────────────────────────────────────────────────────────
         col_bar, col_pie = st.columns(2)
 
         with col_bar:
-            st.markdown(
-                """
-                <div class="equal-container">
-                    <div class="equal-container-header">
-                        <h4 class="equal-container-title">🎯 Severity Class Counts</h4>
-                        <span class="equal-container-badge">Distribution</span>
-                    </div>
-                    <div class="equal-container-body">
-                """,
-                unsafe_allow_html=True,
-            )
+            st.markdown("**🎯 Severity Class Counts**")
             if TARGET_COL in df.columns:
                 counts = (
                     df[TARGET_COL]
@@ -931,50 +681,28 @@ if page == "🏠  Home":
                 )
                 counts.columns = ["Severity", "Count"]
                 counts["Pct"] = (counts["Count"] / counts["Count"].sum() * 100).round(1)
-
                 fig_bar = px.bar(
                     counts, x="Severity", y="Count", color="Severity",
                     color_discrete_map=SEVERITY_COLORS,
                     text=counts["Pct"].apply(lambda x: f"{x}%"),
                 )
                 fig_bar.update_traces(textposition="outside", marker_line_width=1.5, marker_line_color="rgba(255,255,255,0.2)")
-                apply_plot_theme(fig_bar, height=310)
+                apply_plot_theme(fig_bar, height=340)
                 fig_bar.update_layout(showlegend=False, yaxis_title="Accident Count")
                 st.plotly_chart(fig_bar, use_container_width=True)
-
-            st.markdown(
-                """
-                    </div>
-                    <div class="equal-container-footer">
-                        💡 <b>Insight:</b> Minor & major accidents comprise the majority of events (~85%), but fatal crashes require high-priority predictive focus.
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+            st.caption("💡 Minor & major accidents comprise ~85% of events, but fatal crashes need priority focus.")
 
         with col_pie:
-            st.markdown(
-                """
-                <div class="equal-container">
-                    <div class="equal-container-header">
-                        <h4 class="equal-container-title">🥧 Severity Share Proportion</h4>
-                        <span class="equal-container-badge">Ratio Breakdown</span>
-                    </div>
-                    <div class="equal-container-body">
-                """,
-                unsafe_allow_html=True,
-            )
+            st.markdown("**🥧 Severity Share Proportion**")
             if TARGET_COL in df.columns:
                 pie_data = df[TARGET_COL].value_counts().reset_index()
                 pie_data.columns = ["Severity", "Count"]
-
                 fig_pie = px.pie(
                     pie_data, values="Count", names="Severity",
                     color="Severity", color_discrete_map=SEVERITY_COLORS,
                     hole=0.52,
                 )
-                apply_plot_theme(fig_pie, height=310)
+                apply_plot_theme(fig_pie, height=340)
                 fig_pie.update_traces(
                     textposition="inside",
                     textinfo="percent+label",
@@ -982,53 +710,23 @@ if page == "🏠  Home":
                 )
                 fig_pie.update_layout(showlegend=True, legend=dict(orientation="h", y=-0.15, x=0.2))
                 st.plotly_chart(fig_pie, use_container_width=True)
-
-            st.markdown(
-                """
-                    </div>
-                    <div class="equal-container-footer">
-                        ⚖️ <b>Class Weighting:</b> The model handles class imbalance using balanced sample weighting to ensure fatal cases are not overshadowed.
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+            st.caption("⚖️ Model uses balanced class weighting so fatal cases are not overshadowed.")
 
     st.markdown("---")
 
-    # ── PROJECT OBJECTIVES GRID ───────────────────────────────────────────────
+    # ── PROJECT OBJECTIVES ───────────────────────────────────────────────────
     st.markdown("### 🎯 Strategic Objectives")
     o1, o2 = st.columns(2)
     with o1:
-        st.markdown(
-            """
-            <div class="glass-card">
-                <b>1 · Predictive Intelligence</b>
-                <span>Classify incoming accident alerts into Minor, Major, or Fatal within milliseconds using trained multi-class ensembles.</span>
-            </div>
-            <div style="height: 12px;"></div>
-            <div class="glass-card">
-                <b>2 · Root Cause Discovery</b>
-                <span>Isolate the strongest contributing factors — such as impact speed, vehicle archetypes, and road geometry — across severity classes.</span>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        st.markdown("**1 · Predictive Intelligence**")
+        st.markdown("Classify incoming accident alerts into Minor, Major, or Fatal within milliseconds using trained multi-class ensembles.")
+        st.markdown("**2 · Root Cause Discovery**")
+        st.markdown("Isolate the strongest contributing factors — such as impact speed, vehicle archetypes, and road geometry — across severity classes.")
     with o2:
-        st.markdown(
-            """
-            <div class="glass-card">
-                <b>3 · Geospatial Hotspot Mapping</b>
-                <span>Pinpoint critical accident clusters across National Highways and urban arterial roads to allocate emergency dispatch.</span>
-            </div>
-            <div style="height: 12px;"></div>
-            <div class="glass-card">
-                <b>4 · Decision-Support Interface</b>
-                <span>Empower traffic authorities, first responders, and municipal engineers with intuitive real-time simulation tools.</span>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        st.markdown("**3 · Geospatial Hotspot Mapping**")
+        st.markdown("Pinpoint critical accident clusters across National Highways and urban arterial roads to allocate emergency dispatch.")
+        st.markdown("**4 · Decision-Support Interface**")
+        st.markdown("Empower traffic authorities, first responders, and municipal engineers with intuitive real-time simulation tools.")
 
     st.markdown("---")
 
@@ -1075,49 +773,21 @@ if page == "🏠  Home":
 
     st.markdown("---")
 
-    # ── HOW TO USE CARDS ──────────────────────────────────────────────────────
+    # ── MODULE OVERVIEW ───────────────────────────────────────────────────────
     st.markdown("### 🧭 Interactive Modules")
     g1, g2, g3, g4 = st.columns(4)
     with g1:
-        st.markdown(
-            """
-            <div class="metric-card" style="text-align: center; min-height: 140px;">
-                <div class="metric-card-top-bar blue"></div>
-                <div style="font-size: 1.8rem;">📂</div>
-                <div style="font-weight: 700; color: #f8fafc; margin-top: 6px;">Dataset Explorer</div>
-                <div class="metric-sub" style="margin-top: 4px;">Inspect raw records, statistics, and distributions.</div>
-            </div>
-            """, unsafe_allow_html=True)
+        st.markdown("📂 **Dataset Explorer**")
+        st.caption("Inspect raw records, statistics, and distributions.")
     with g2:
-        st.markdown(
-            """
-            <div class="metric-card" style="text-align: center; min-height: 140px;">
-                <div class="metric-card-top-bar green"></div>
-                <div style="font-size: 1.8rem;">🔮</div>
-                <div style="font-weight: 700; color: #f8fafc; margin-top: 6px;">Predict Severity</div>
-                <div class="metric-sub" style="margin-top: 4px;">Simulate scenarios with instant ML inference.</div>
-            </div>
-            """, unsafe_allow_html=True)
+        st.markdown("🔮 **Predict Severity**")
+        st.caption("Simulate scenarios with instant ML inference.")
     with g3:
-        st.markdown(
-            """
-            <div class="metric-card" style="text-align: center; min-height: 140px;">
-                <div class="metric-card-top-bar amber"></div>
-                <div style="font-size: 1.8rem;">🗺️</div>
-                <div style="font-weight: 700; color: #f8fafc; margin-top: 6px;">Hotspot Map</div>
-                <div class="metric-sub" style="margin-top: 4px;">Explore geospatial accident clusters across India.</div>
-            </div>
-            """, unsafe_allow_html=True)
+        st.markdown("🗺️ **Hotspot Map**")
+        st.caption("Explore geospatial accident clusters across India.")
     with g4:
-        st.markdown(
-            """
-            <div class="metric-card" style="text-align: center; min-height: 140px;">
-                <div class="metric-card-top-bar red"></div>
-                <div style="font-size: 1.8rem;">⚡</div>
-                <div style="font-weight: 700; color: #f8fafc; margin-top: 6px;">Keep-Awake</div>
-                <div class="metric-sub" style="margin-top: 4px;">Background heartbeat keeps free hosting active.</div>
-            </div>
-            """, unsafe_allow_html=True)
+        st.markdown("⚡ **Keep-Awake**")
+        st.caption("Background heartbeat keeps free hosting active.")
 
 
 # =============================================================================
@@ -1127,18 +797,9 @@ if page == "🏠  Home":
 # =============================================================================
 elif page == "📂  Dataset":
 
-    st.markdown(
-        """
-        <div class="hero-banner">
-            <h1 class="hero-title">📂 Crash Dataset Explorer</h1>
-            <p class="hero-subtitle">
-                Explore, slice, and audit the processed Indian road accidents database.
-                Review distributions, missing value patterns, and feature correlations.
-            </p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    st.title("📂 Crash Dataset Explorer")
+    st.caption("Explore, slice, and audit the processed Indian road accidents database. Review distributions, missing value patterns, and feature correlations.")
+    st.markdown("---")
 
     if st.session_state.df is None:
         st.error(f"Dataset not found at `{DATA_PATH}`. Please check the file path.")
@@ -1146,14 +807,12 @@ elif page == "📂  Dataset":
 
     df = st.session_state.df
 
-    # ── KPI METRICS STRIP ─────────────────────────────────────────────────────
-    kpi_items = [
-        {"label": "Total Crash Records", "value": f"{len(df):,}", "sub": "Curated incidents", "icon": "📋", "color": "blue"},
-        {"label": "Total Features", "value": f"{df.shape[1]}", "sub": "Numerical & categorical", "icon": "📌", "color": "blue"},
-        {"label": "States Represented", "value": f"{df['state_name_first'].nunique()}" if "state_name_first" in df.columns else "—", "sub": "Nationwide reach", "icon": "🗺️", "color": "green"},
-        {"label": "Severity Classes", "value": f"{df[TARGET_COL].nunique()}" if TARGET_COL in df.columns else "3", "sub": "minor · major · fatal", "icon": "🏷️", "color": "red"},
-    ]
-    render_metric_grid(kpi_items)
+    # ── KPI METRICS ───────────────────────────────────────────────────────────
+    k1, k2, k3, k4 = st.columns(4)
+    k1.metric("Total Crash Records", f"{len(df):,}")
+    k2.metric("Total Features",      f"{df.shape[1]}")
+    k3.metric("States Represented",  f"{df['state_name_first'].nunique()}" if "state_name_first" in df.columns else "—")
+    k4.metric("Severity Classes",    f"{df[TARGET_COL].nunique()}" if TARGET_COL in df.columns else "3")
 
     # ── SAMPLE TABLE ──────────────────────────────────────────────────────────
     st.markdown("### 🎲 Interactive Dataset Sample")
@@ -1243,49 +902,20 @@ elif page == "📂  Dataset":
             col_d1, col_d2 = st.columns(2)
 
             with col_d1:
-                st.markdown(
-                    """
-                    <div class="equal-container">
-                        <div class="equal-container-header">
-                            <h4 class="equal-container-title">🎯 Class Distribution</h4>
-                            <span class="equal-container-badge">Overview</span>
-                        </div>
-                        <div class="equal-container-body">
-                    """,
-                    unsafe_allow_html=True,
-                )
+                st.markdown("**🎯 Class Distribution**")
                 fig_d = px.bar(
                     dist_data, x="Severity", y="Count", color="Severity",
                     color_discrete_map=SEVERITY_COLORS,
                     text="Percentage",
                 )
                 fig_d.update_traces(texttemplate="%{text}%", textposition="outside")
-                apply_plot_theme(fig_d, height=310)
+                apply_plot_theme(fig_d, height=340)
                 fig_d.update_layout(showlegend=False)
                 st.plotly_chart(fig_d, use_container_width=True)
-                st.markdown(
-                    """
-                        </div>
-                        <div class="equal-container-footer">
-                            📊 Total dataset represents balanced real-world accident reports across urban and highway corridors.
-                        </div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
+                st.caption("📊 Dataset represents balanced real-world accident reports across urban and highway corridors.")
 
             with col_d2:
-                st.markdown(
-                    """
-                    <div class="equal-container">
-                        <div class="equal-container-header">
-                            <h4 class="equal-container-title">🗺️ Top Contributing States</h4>
-                            <span class="equal-container-badge">Top 8</span>
-                        </div>
-                        <div class="equal-container-body">
-                    """,
-                    unsafe_allow_html=True,
-                )
+                st.markdown("**🗺️ Top Contributing States (Top 8)**")
                 if "state_name_first" in df.columns:
                     top_states = df["state_name_first"].value_counts().head(8).reset_index()
                     top_states.columns = ["State", "Crashes"]
@@ -1293,22 +923,12 @@ elif page == "📂  Dataset":
                         top_states, x="Crashes", y="State", orientation="h",
                         color="Crashes", color_continuous_scale="Blues",
                     )
-                    apply_plot_theme(fig_st, height=310)
+                    apply_plot_theme(fig_st, height=340)
                     fig_st.update_layout(coloraxis_showscale=False, yaxis=dict(autorange="reversed"))
                     st.plotly_chart(fig_st, use_container_width=True)
                 else:
                     st.info("State column not found.")
-
-                st.markdown(
-                    """
-                        </div>
-                        <div class="equal-container-footer">
-                            📍 Highly populated transit states report higher frequencies, reflecting higher vehicular density.
-                        </div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
+                st.caption("📍 Highly populated transit states report higher frequencies, reflecting higher vehicular density.")
 
 
 # =============================================================================
@@ -1318,18 +938,9 @@ elif page == "📂  Dataset":
 # =============================================================================
 elif page == "🔮  Predict Severity":
 
-    st.markdown(
-        """
-        <div class="hero-banner">
-            <h1 class="hero-title">🔮 Machine Learning Severity Inference</h1>
-            <p class="hero-subtitle">
-                Enter crash scenario parameters to forecast severity outcome (Minor, Major, Fatal),
-                examine prediction probabilities, and review global feature drivers.
-            </p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    st.title("🔮 Machine Learning Severity Inference")
+    st.caption("Enter crash scenario parameters to forecast severity outcome (Minor, Major, Fatal), examine prediction probabilities, and review global feature drivers.")
+    st.markdown("---")
 
     if st.session_state.model_bundle is None:
         st.error(f"Pre-trained model bundle not found at `{MODEL_PATH}`.")
@@ -1355,19 +966,12 @@ elif page == "🔮  Predict Severity":
     input_dict = dict(default_inputs)
 
     # ── INPUT FORM ────────────────────────────────────────────────────────────
-    st.markdown("### 🎛️ Scenario Simulation Parameters")
+    st.markdown("### 🎧️ Scenario Simulation Parameters")
     st.caption("Adjust the sliders, dropdowns, and flags below to model a specific accident scenario.")
 
     with st.form("prediction_form"):
         # Section 1: Environment & Road
-        st.markdown(
-            """
-            <div style="background: rgba(30, 41, 59, 0.4); padding: 10px 16px; border-radius: 10px; border-left: 4px solid #38bdf8; margin: 12px 0;">
-                <b style="color: #f8fafc;">🌦️ Section 1: Environment & Road Infrastructure</b>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        st.subheader("🌦️ Section 1: Environment & Road Infrastructure")
         env_cols = st.columns(3)
 
         env_field_map = {
@@ -1403,14 +1007,7 @@ elif page == "🔮  Predict Severity":
                 input_dict[feat] = val
 
         # Section 2: Vehicle & Crash Dynamics
-        st.markdown(
-            """
-            <div style="background: rgba(30, 41, 59, 0.4); padding: 10px 16px; border-radius: 10px; border-left: 4px solid #f59e0b; margin: 18px 0 12px 0;">
-                <b style="color: #f8fafc;">🚗 Section 2: Vehicle & Impact Dynamics</b>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        st.subheader("🚗 Section 2: Vehicle & Impact Dynamics")
         veh_cols = st.columns(3)
 
         veh_field_map = {
@@ -1445,14 +1042,7 @@ elif page == "🔮  Predict Severity":
                 input_dict[feat] = val
 
         # Section 3: Safety Gear & Occupants
-        st.markdown(
-            """
-            <div style="background: rgba(30, 41, 59, 0.4); padding: 10px 16px; border-radius: 10px; border-left: 4px solid #10b981; margin: 18px 0 12px 0;">
-                <b style="color: #f8fafc;">👤 Section 3: Safety Gear & Demographics</b>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        st.subheader("👤 Section 3: Safety Gear & Demographics")
         saf_cols = st.columns(3)
 
         saf_field_map = {
@@ -1497,28 +1087,10 @@ elif page == "🔮  Predict Severity":
         res_l, res_r = st.columns(2)
 
         with res_l:
-            st.markdown(
-                """
-                <div class="equal-container" style="height: 420px;">
-                    <div class="equal-container-header">
-                        <h4 class="equal-container-title">🏁 Predicted Outcome</h4>
-                        <span class="equal-container-badge">Model Decision</span>
-                    </div>
-                    <div class="equal-container-body" style="text-align: center;">
-                """,
-                unsafe_allow_html=True,
-            )
+            st.markdown("**🏁 Predicted Outcome**")
             st.markdown(severity_badge(pred_label), unsafe_allow_html=True)
-
             max_prob = float(probas.max())
-            st.markdown(
-                f"""
-                <div style="font-size: 1.1rem; font-weight: 700; color: #f8fafc; margin-top: 14px;">
-                    Confidence: <span style="color: #38bdf8;">{max_prob:.1%}</span>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+            st.markdown(f"**Confidence:** {max_prob:.1%}")
 
             if pred_label == "fatal":
                 st.error("⚠️ **CRITICAL SEVERITY**: High likelihood of fatal outcome. Immediate trauma-center dispatch recommended.")
@@ -1526,30 +1098,10 @@ elif page == "🔮  Predict Severity":
                 st.warning("🟠 **HIGH SEVERITY**: Major vehicle deformation and severe injuries anticipated.")
             else:
                 st.success("🟢 **LOW SEVERITY**: Minor injuries anticipated. Standard medical and clearance protocols apply.")
-
-            st.markdown(
-                """
-                    </div>
-                    <div class="equal-container-footer">
-                        🛡️ <b>Actionable Protocol:</b> Dispatch level calibrated against impact speed and safety compliance rates.
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+            st.caption("🛡️ Dispatch level calibrated against impact speed and safety compliance rates.")
 
         with res_r:
-            st.markdown(
-                """
-                <div class="equal-container" style="height: 420px;">
-                    <div class="equal-container-header">
-                        <h4 class="equal-container-title">📊 Class Probability Spectrum</h4>
-                        <span class="equal-container-badge">Multi-Class Softmax</span>
-                    </div>
-                    <div class="equal-container-body">
-                """,
-                unsafe_allow_html=True,
-            )
+            st.markdown("**📊 Class Probability Spectrum**")
             proba_df = pd.DataFrame({
                 "Class": list(class_names),
                 "Probability": list(probas),
@@ -1560,42 +1112,22 @@ elif page == "🔮  Predict Severity":
                 text=[f"{p:.1%}" for p in probas],
             )
             fig_p.update_traces(textposition="outside", marker_line_width=1.5, marker_line_color="rgba(255,255,255,0.2)")
-            apply_plot_theme(fig_p, height=250)
+            apply_plot_theme(fig_p, height=280)
             fig_p.update_layout(
                 showlegend=False,
                 yaxis=dict(range=[0, max(1.0, max_prob * 1.25)], tickformat=".0%"),
             )
             st.plotly_chart(fig_p, use_container_width=True)
+            st.caption("📈 Shows individual likelihood for Minor, Major, and Fatal outcomes under this specific scenario.")
 
-            st.markdown(
-                """
-                    </div>
-                    <div class="equal-container-footer">
-                        📈 Shows individual likelihood for Minor, Major, and Fatal outcomes under this specific scenario.
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
-        # ── EQUAL WIDTH & HEIGHT: FEATURE IMPORTANCE VS INSIGHTS ──────────────
+        # ── FEATURE IMPORTANCE VS INSIGHTS ───────────────────────────────────────
         if not feat_imp.empty:
             st.markdown("### 🔍 Model Explainability & Key Drivers")
 
             col_fi, col_insight = st.columns(2)
 
             with col_fi:
-                st.markdown(
-                    """
-                    <div class="equal-container" style="height: 440px;">
-                        <div class="equal-container-header">
-                            <h4 class="equal-container-title">📈 Top Global Feature Importances</h4>
-                            <span class="equal-container-badge">Tree Weights</span>
-                        </div>
-                        <div class="equal-container-body">
-                    """,
-                    unsafe_allow_html=True,
-                )
+                st.markdown("**📈 Top Global Feature Importances**")
                 top_fi = feat_imp.head(8).sort_values("Importance", ascending=True)
                 fig_fi = px.bar(
                     top_fi, x="Importance", y="Feature", orientation="h",
@@ -1603,50 +1135,20 @@ elif page == "🔮  Predict Severity":
                     text=top_fi["Importance"].round(3),
                 )
                 fig_fi.update_traces(textposition="outside")
-                apply_plot_theme(fig_fi, height=310)
+                apply_plot_theme(fig_fi, height=340)
                 fig_fi.update_layout(coloraxis_showscale=False, margin=dict(r=40, t=10, b=10))
                 st.plotly_chart(fig_fi, use_container_width=True)
-
-                st.markdown(
-                    """
-                        </div>
-                        <div class="equal-container-footer">
-                            💡 Relative importance calculated across all splitting nodes in the ensemble.
-                        </div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
+                st.caption("💡 Relative importance calculated across all splitting nodes in the ensemble.")
 
             with col_insight:
-                st.markdown(
-                    """
-                    <div class="equal-container" style="height: 440px;">
-                        <div class="equal-container-header">
-                            <h4 class="equal-container-title">💡 Risk Mitigation Insights</h4>
-                            <span class="equal-container-badge">Safety Advisory</span>
-                        </div>
-                        <div class="equal-container-body" style="justify-content: space-around;">
-                            <div class="glass-card" style="min-height: 80px; margin-bottom: 8px;">
-                                <b>⚡ Impact Speed Thresholds</b>
-                                <span>Crash kinetic energy scales quadratically ($v^2$). Reducing speed by 10 km/h drastically shifts probability from Fatal to Major.</span>
-                            </div>
-                            <div class="glass-card" style="min-height: 80px; margin-bottom: 8px;">
-                                <b>🛡️ Safety Gear Factor</b>
-                                <span>Helmet and seatbelt compliance rate is one of the highest ranked protective factors against fatal head trauma.</span>
-                            </div>
-                            <div class="glass-card" style="min-height: 80px;">
-                                <b>🌧️ Environmental Interactions</b>
-                                <span>Adverse road conditions compounded with poor lighting (night hours) display the highest fatal probability multipliers.</span>
-                            </div>
-                        </div>
-                        <div class="equal-container-footer">
-                            📋 Calibrated with recommendations from the Ministry of Road Transport and Highways (MoRTH).
-                        </div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
+                st.markdown("**💡 Risk Mitigation Insights**")
+                st.markdown("⚡ **Impact Speed Thresholds**")
+                st.markdown("Crash kinetic energy scales quadratically ($v^2$). Reducing speed by 10 km/h drastically shifts probability from Fatal to Major.")
+                st.markdown("🛡️ **Safety Gear Factor**")
+                st.markdown("Helmet and seatbelt compliance rate is one of the highest ranked protective factors against fatal head trauma.")
+                st.markdown("🌧️ **Environmental Interactions**")
+                st.markdown("Adverse road conditions compounded with poor lighting (night hours) display the highest fatal probability multipliers.")
+                st.caption("📋 Calibrated with recommendations from the Ministry of Road Transport and Highways (MoRTH).")
 
 
 # =============================================================================
@@ -1656,18 +1158,9 @@ elif page == "🔮  Predict Severity":
 # =============================================================================
 elif page == "🗺️  India Accident Map":
 
-    st.markdown(
-        """
-        <div class="hero-banner">
-            <h1 class="hero-title">🗺️ Geospatial Accident Intelligence Map</h1>
-            <p class="hero-subtitle">
-                Interactive spatial map of crash incidents across Indian National & State Highways.
-                Filter by severity, state, and explore concentrated accident blackspots.
-            </p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    st.title("🗺️ Geospatial Accident Intelligence Map")
+    st.caption("Interactive spatial map of crash incidents across Indian National & State Highways. Filter by severity, state, and explore concentrated accident blackspots.")
+    st.markdown("---")
 
     if st.session_state.df is None:
         st.error(f"Dataset not found at `{DATA_PATH}`.")
@@ -1789,64 +1282,33 @@ elif page == "🗺️  India Accident Map":
 
         st.markdown("---")
 
-        # ── EQUAL WIDTH & HEIGHT: STATE COMPARISON CHARTS ─────────────────────
+        # ── STATE COMPARISON CHARTS ───────────────────────────────────────────
         if "state_name_first" in map_df.columns and TARGET_COL in map_df.columns:
             st.markdown("### 📊 State-Level Comparative Breakdown")
 
             col_s1, col_s2 = st.columns(2)
 
             with col_s1:
-                st.markdown(
-                    """
-                    <div class="equal-container" style="height: 480px;">
-                        <div class="equal-container-header">
-                            <h4 class="equal-container-title">📊 Severity by State</h4>
-                            <span class="equal-container-badge">Stacked Analysis</span>
-                        </div>
-                        <div class="equal-container-body">
-                    """,
-                    unsafe_allow_html=True,
-                )
+                st.markdown("**📊 Severity by State**")
                 state_data = (
                     map_df.groupby(["state_name_first", TARGET_COL])
                     .size()
                     .reset_index(name="Count")
                 )
                 state_data.columns = ["State", "Severity", "Count"]
-
                 fig_s = px.bar(
                     state_data, x="State", y="Count", color="Severity",
                     color_discrete_map=SEVERITY_COLORS,
                     category_orders={"Severity": SEVERITY_ORDER},
                     barmode="group",
                 )
-                apply_plot_theme(fig_s, height=350)
+                apply_plot_theme(fig_s, height=380)
                 fig_s.update_layout(xaxis_tickangle=35, margin=dict(b=70, t=10))
                 st.plotly_chart(fig_s, use_container_width=True)
-
-                st.markdown(
-                    """
-                        </div>
-                        <div class="equal-container-footer">
-                            🛣️ Grouped volume comparison reveals geographic concentration across key interstate arteries.
-                        </div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
+                st.caption("🛣️ Grouped volume comparison reveals geographic concentration across key interstate arteries.")
 
             with col_s2:
-                st.markdown(
-                    """
-                    <div class="equal-container" style="height: 480px;">
-                        <div class="equal-container-header">
-                            <h4 class="equal-container-title">📋 State Totals & Proportions</h4>
-                            <span class="equal-container-badge">Summary Table</span>
-                        </div>
-                        <div class="equal-container-body" style="overflow-y: auto;">
-                    """,
-                    unsafe_allow_html=True,
-                )
+                st.markdown("**📋 State Totals & Proportions**")
                 pivot = (
                     map_df.groupby(["state_name_first", TARGET_COL])
                     .size()
@@ -1857,18 +1319,7 @@ elif page == "🗺️  India Accident Map":
                 pivot = pivot.rename(columns={"state_name_first": "State"})
                 pivot["Total"] = pivot.drop(columns="State").sum(axis=1)
                 pivot = pivot.sort_values("Total", ascending=False).reset_index(drop=True)
-
-                st.dataframe(pivot, use_container_width=True, hide_index=True, height=350)
-
-                st.markdown(
-                    """
-                        </div>
-                        <div class="equal-container-footer">
-                            📌 Sorted by aggregate incident volume for targeted state-level highway safety planning.
-                        </div>
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
+                st.dataframe(pivot, use_container_width=True, hide_index=True, height=380)
+                st.caption("📌 Sorted by aggregate incident volume for targeted state-level highway safety planning.")
 
 # ── END OF APP ────────────────────────────────────────────────────────────────
