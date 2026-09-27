@@ -11,6 +11,7 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import folium
+from folium.plugins import MarkerCluster
 from streamlit_folium import st_folium
 import joblib
 import warnings
@@ -559,8 +560,7 @@ def _normalise_bundle(raw: dict, df_source: pd.DataFrame | None = None) -> dict:
         pass
 
     if not hasattr(label_encoder, "classes_") or label_encoder.classes_ is None:
-        import numpy as _np
-        label_encoder.classes_ = _np.array(classes)
+        label_encoder.classes_ = np.array(classes)
 
     acc = raw.get("accuracy", raw.get("metrics", {}).get("accuracy", "—"))
 
@@ -1752,7 +1752,6 @@ elif page == "🗺️  India Accident Map":
             **tiles_kwargs,
         )
 
-        from folium.plugins import MarkerCluster
         cluster = MarkerCluster(
             options={"maxClusterRadius": 40, "disableClusteringAtZoom": 10}
         ).add_to(m)
