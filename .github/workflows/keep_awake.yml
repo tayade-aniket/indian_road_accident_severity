@@ -2,112 +2,65 @@ name: Keep Streamlit App Awake
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Runs automatically every 10 minutes on GitHub's cloud runners.
-# Purpose: Ping the hosted Streamlit app so Streamlit Cloud never marks it
-# as inactive and never puts it to sleep.
+# Purpose: Ping the hosted Streamlit app so Streamlit Community Cloud
+# never marks it as inactive and never puts it to sleep.
 #
 # ZERO LATENCY & ZERO IMPACT ON APP:
-#   1. Runs 100% externally on GitHub's servers — not inside your app.
-#   2. Targets Streamlit's official lightweight healthcheck: /_stcore/health
-#      - Responds in ~1ms with HTTP 200 "ok".
-#      - Does NOT execute app.py or pandas/ML inference.
-#      - Does NOT consume server RAM or CPU.
-#      - Ingress router registers active HTTP traffic, resetting the 7-day sleep timer!
-#   3. Includes automatic fallback to root URL (/) if health endpoint is proxied.
-#   4. Automatically prevents GitHub from suspending the cron after 60 days.
+#   1. Runs 100% externally on GitHub's cloud — zero load on your machine.
+#   2. Targets Streamlit's official healthcheck: /_stcore/health (<1ms, 200 OK).
+#   3. Does NOT load data, run ML inference, or consume server memory.
+#   4. Graceful fallback to root URL if health endpoint is proxied.
+#   5. Automatically keeps GitHub Actions schedule active past 60 days.
 # ─────────────────────────────────────────────────────────────────────────────
 
-on:
+'on':
   schedule:
-    - cron: '*/10 * * * *'    # Every 10 minutes — ideal keep-alive cadence
-  workflow_dispatch:          # Allows manual trigger anytime from GitHub Actions tab
+    - cron: '*/10 * * * *'    # Every 10 minutes
+  workflow_dispatch:          # Allows manual run from Actions tab anytime
 
 jobs:
   keep_awake:
-    name: Ping & Keep-Alive Streamlit App
+    name: Ping Streamlit App
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    concurrency:
-      group: keep-awake-ping
-      cancel-in-progress: true
 
     steps:
-      - name: Checkout repository (for keepalive guard)
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Resolve target URL
+      - name: Ping Streamlit Cloud & Keep Awake
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
         run: |
-          TARGET="${{ secrets.APP_URL }}"
-          if [ -z "$TARGET" ]; then
-            TARGET="https://indian-road-accident-severity.streamlit.app"
-            echo "INFO: APP_URL secret not set — using default target: $TARGET"
+          TARGET="${APP_URL:-https://indian-road-accident-severity.streamlit.app}"
+          # Strip trailing slashes
+          TARGET="${TARGET%/}"
+          HEALTH_URL="${TARGET}/_stcore/health"
+
+          echo "Target App : $TARGET"
+          echo "Health URL : $HEALTH_URL"
+          echo "Timestamp  : $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+
+          # Ping official health endpoint (fast <1ms response, 200 OK)
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 -L "$HEALTH_URL" 2>/dev/null || echo "000")
+          echo "Health endpoint response: HTTP $STATUS"
+
+          # Fallback to root URL if health check is unreachable or not 200
+          if [ "$STATUS" != "200" ]; then
+            echo "Health endpoint returned HTTP $STATUS. Pinging root URL: $TARGET"
+            sleep 5
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 -L "$TARGET" 2>/dev/null || echo "000")
+            echo "Root URL response: HTTP $STATUS"
           fi
-          HEALTH="${TARGET%/}/_stcore/health"
-          echo "TARGET_URL=$TARGET" >> "$GITHUB_ENV"
-          echo "HEALTH_URL=$HEALTH" >> "$GITHUB_ENV"
-          echo "Target App URL : $TARGET"
-          echo "Health Endpoint: $HEALTH"
 
-      - name: Ping Health Endpoint (Zero-Impact Heartbeat)
-        id: ping_health
-        run: |
-          echo "Pinging health endpoint at $(date -u '+%Y-%m-%d %H:%M:%S UTC')..."
-          HTTP=$(curl \
-            --silent \
-            --output /dev/null \
-            --write-out "%{http_code}" \
-            --location \
-            --max-redirs 5 \
-            --max-time 15 \
-            --retry 2 \
-            --retry-delay 3 \
-            --retry-connrefused \
-            --user-agent "GitHub-KeepAwake-Bot/4.0 (Streamlit-HealthCheck)" \
-            "$HEALTH_URL" || echo "000")
-          echo "HTTP_HEALTH=$HTTP" >> "$GITHUB_ENV"
-          echo "  -> /_stcore/health responded with: HTTP $HTTP"
-
-      - name: Fallback Ping to Root (If Health Check is Unreachable)
-        if: env.HTTP_HEALTH != '200'
-        run: |
-          echo "Health endpoint returned $HTTP_HEALTH. Falling back to root URL..."
-          sleep 10
-          HTTP_ROOT=$(curl \
-            --silent \
-            --output /dev/null \
-            --write-out "%{http_code}" \
-            --location \
-            --max-redirs 5 \
-            --max-time 30 \
-            --retry 2 \
-            --retry-delay 5 \
-            --retry-connrefused \
-            --user-agent "GitHub-KeepAwake-Bot/4.0 (Streamlit-RootFallback)" \
-            "$TARGET_URL" || echo "000")
-          echo "HTTP_ROOT=$HTTP_ROOT" >> "$GITHUB_ENV"
-          echo "  -> Root URL responded with: HTTP $HTTP_ROOT"
-
-      - name: Keep-Awake Audit Report
-        run: |
-          echo "================================================="
-          echo "  Streamlit Cloud Keep-Awake Report"
-          echo "  Target App : $TARGET_URL"
-          echo "  Health URL : $HEALTH_URL (HTTP $HTTP_HEALTH)"
-          if [ -n "$HTTP_ROOT" ]; then
-            echo "  Root URL   : $TARGET_URL (HTTP $HTTP_ROOT)"
-          fi
-          echo "================================================="
-          if [ "$HTTP_HEALTH" = "200" ]; then
-            echo "SUCCESS: App is online and active! Inactivity timer reset."
-          elif [ "$HTTP_ROOT" -ge 200 ] 2>/dev/null && [ "$HTTP_ROOT" -lt 400 ] 2>/dev/null; then
-            echo "SUCCESS: App responded on root URL (HTTP $HTTP_ROOT)."
+          # Report status without failing the cron job
+          if [ "$STATUS" = "200" ] || [ "$STATUS" = "301" ] || [ "$STATUS" = "302" ] || [ "$STATUS" = "304" ]; then
+            echo "SUCCESS: Streamlit app is awake and responsive (HTTP $STATUS)!"
           else
-            echo "NOTICE: App may be in cold boot or restarting. Next ping in 10m."
+            echo "NOTICE: App returned HTTP $STATUS. App may be cold-booting. Next ping in 10 minutes."
           fi
 
-      - name: Prevent GitHub from suspending scheduled workflow (60-day rule)
-        uses: gautamkrishnar/keepalive-workflow@v1
+      - name: Keep GitHub Actions schedule active (60-day inactivity rule)
+        uses: gautamkrishnar/keepalive-workflow@v2
         continue-on-error: true
-        with:
-          committer_email: "actions@github.com"
-          committer_username: "github-actions[bot]"
