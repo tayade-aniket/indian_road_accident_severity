@@ -58,7 +58,7 @@ Raw accident data exists but is buried in government PDFs and Excel files with n
 
 ## ✨ Live Demo & Features
 
-Link- [https://indianroadaccidentseverity.streamlit.app/](https://indianroadaccidentseverity.streamlit.app/)
+Link- [https://indian-road-accident-severity.streamlit.app/](https://indian-road-accident-severity.streamlit.app/)
 
 ### App Pages
 
